@@ -133,4 +133,4 @@ function onKeyUp(e) {
     }
 
 init();
-animate();
+animate(); // Devia estar no init???
