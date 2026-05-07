@@ -9,7 +9,7 @@ import * as THREE from "three";
 //////////////////////
 const HEIGHT = window.innerHeight;
 const WIDTH = window.innerWidth;
-const BACKGROUND = new THREE.Color(0xffffff);
+const BACKGROUND = new THREE.Color(0xA9A9A9);
 
 let camera;
 let renderer, scene;
