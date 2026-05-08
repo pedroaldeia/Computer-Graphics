@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { perspectiveDepthToViewZ } from "three/src/nodes/display/ViewportDepthNode.js";
+// import { perspectiveDepthToViewZ } from "three/src/nodes/display/ViewportDepthNode.js";
 // import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 // import { VRButton } from "three/addons/webxr/VRButton.js";
 // import * as Stats from "three/addons/libs/stats.module.js";
@@ -15,17 +15,22 @@ const BACKGROUND = new THREE.Color(0xA9A9A9);
 let topCamera;
 let lateralCamera;
 let frontalCamera;
-let pespectiveCamera;
-let ortogonalCamera;
+let perspectiveCamera;
+let orthogonalCamera;
 let renderer, scene;
+let camera;
+
+// Helpers
+let cameraHelpers = [];
+let helpersVisible = true;
 
 // Flags
-let pressed = { 
-  topCamera: false, 
+let pressed = {
+  topCamera: false,
   lateralCamera: false,
   frontalCamera: false,
-  ortogonalCamera: false,
-  pespectiveCamera: false,
+  orthogonalCamera: false,
+  perspectiveCamera: false,
 };
 
 ///////////////////////
@@ -61,13 +66,37 @@ function setupCameras() {
     frontalCamera.position.set(50, 0, 0);
     frontalCamera.lookAt(scene.position);
     
-    ortogonalCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
-    ortogonalCamera.position.set(50, 50, 50);
-    ortogonalCamera.lookAt(scene.position);
+    orthogonalCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
+    orthogonalCamera.position.set(50, 50, 50);
+    orthogonalCamera.lookAt(scene.position);
 
-    pespectiveCamera = new THREE.PerspectiveCamera(70, aspect, 1, 1000);
-    pespectiveCamera.position(50, 50, 50);
-    pespectiveCamera.lookAt(scene.position);
+    perspectiveCamera = new THREE.PerspectiveCamera(70, aspect, 1, 1000);
+    perspectiveCamera.position.set(50, 50, 50);
+    perspectiveCamera.lookAt(scene.position);
+
+    camera = perspectiveCamera;
+
+    ////////////////////////
+    // CAMERA HELPERS
+    ////////////////////////
+
+    const topHelper = new THREE.CameraHelper(topCamera);
+    const lateralHelper = new THREE.CameraHelper(lateralCamera);
+    const frontalHelper = new THREE.CameraHelper(frontalCamera);
+    const orthogonalHelper = new THREE.CameraHelper(orthogonalCamera);
+    const perspectiveHelper = new THREE.CameraHelper(perspectiveCamera);
+
+    cameraHelpers.push(
+      topHelper,
+      lateralHelper,
+      frontalHelper,
+      orthogonalHelper,
+      perspectiveHelper
+    );
+
+    cameraHelpers.forEach((helper) => {
+      scene.add(helper);
+    });
 }
 
 /////////////////////
@@ -114,13 +143,13 @@ function update() {
     camera = frontalCamera;
     pressed.frontalCamera = false;
   }
-  if (pressed.ortogonalCamera) {
-    camera = ortogonalCamera;
-    pressed.ortogonalCamera = false;
+  if (pressed.orthogonalCamera) {
+    camera = orthogonalCamera;
+    pressed.orthogonalCamera = false;
   }
-  if (pressed.pespectiveCamera) {
-    camera = pespectiveCamera;
-    pressed.pespectiveCamera = false;
+  if (pressed.perspectiveCamera) {
+    camera = perspectiveCamera;
+    pressed.perspectiveCamera = false;
   }
 }
 
@@ -128,7 +157,7 @@ function update() {
 /* DISPLAY */
 /////////////
 function render() {
-  renderer.render(scene, perspectiveCamera);
+  renderer.render(scene, camera);
 }
 
 ////////////////////////////////
@@ -188,11 +217,20 @@ function onKeyDown(e) {
       break;
     case 52:
     case 100:
-      pressed.ortogonalCamera = true; // 4
+      pressed.orthogonalCamera = true; // 4
       break;
     case 53:
     case 101:
       pressed.perspectiveCamera = true; // 5
+      break;
+
+    // H
+    case 72:
+    case 104:
+      helpersVisible = !helpersVisible;
+      cameraHelpers.forEach((helper) => {
+        helper.visible = helpersVisible;
+      });
       break;
   }
 }
