@@ -226,7 +226,6 @@ function onKeyDown(e) {
 
     // H
     case 72:
-    case 104:
       helpersVisible = !helpersVisible;
       cameraHelpers.forEach((helper) => {
         helper.visible = helpersVisible;
