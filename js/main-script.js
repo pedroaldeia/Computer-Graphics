@@ -457,9 +457,9 @@ function onKeyDown(e) {
       });
       break;
     
-    // TEMP PLEASE DELETE BEFORE SUBMISSION
-    case 65: //A
-    case 97: //a
+    // TEMP PLEASE DELETE BEFORE SUBMISSION Ou maybe não. Ponto 5 do enunciado
+    case 55: //7
+    case 103: //7
       scene.traverse((node) => {
         if (node instanceof THREE.Mesh) node.material.wireframe = !node.material.wireframe;
       });
