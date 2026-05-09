@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createBracelet } from './bracelet.js';
 // import { perspectiveDepthToViewZ } from "three/src/nodes/display/ViewportDepthNode.js";
 // import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 // import { VRButton } from "three/addons/webxr/VRButton.js";
@@ -56,6 +57,11 @@ class SmartWatch extends THREE.Group {
     );
     watch.position.y = 0;
     this.add(watch);
+    
+    const bracelet = createBracelet();
+    bracelet.position.y = -0.8;
+    this.add(bracelet);
+    
   }
 
   _addBaseDescolagem() {
@@ -85,18 +91,15 @@ class SmartWatch extends THREE.Group {
     this.add(suporte);
   }
 
-  _addLens(){
-      const radiusTop = 1.5;  
-      const radiusBottom =  1.5;  
-      const height =  0.3;  
-      const radialSegments = 32;  
-      const lens = new THREE.Mesh (
-        new THREE.CylinderGeometry(radiusTop, radiusBottom, height, radialSegments ),
-        new THREE.MeshBasicMaterial({ color: 0x00ffff })
-      );
-      lens.position.set(0, 6, -8);
-      this.add(lens);
+  _addLens() {
+    const lens = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.5, 1.5, 0.3, 32),
+      new THREE.MeshBasicMaterial({ color: 0x00ffff })
+    );
+    lens.position.set(0, 6, -8);
+    this.add(lens);
   }
+
 }
 
 /////////////////////
