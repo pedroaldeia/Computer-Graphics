@@ -20,6 +20,8 @@ let orthogonalCamera;
 let renderer, scene;
 let camera;
 
+let smartWatch;
+
 // Helpers
 let cameraHelpers = [];
 let helpersVisible = true;
@@ -36,7 +38,52 @@ let pressed = {
 ///////////////////////
 /* CLASS DEFINITIONS */
 ///////////////////////
-//TODO
+class SmartWatch extends THREE.Group {
+  constructor() {
+    super();
+
+    this._addWatch();
+    this._addBaseDescolagem();
+    this._addBotaoDescolagem();
+    this._addSuporteCamara();
+  }
+
+  _addWatch() {
+    const watch = new THREE.Mesh(
+      new THREE.BoxGeometry(20, 2, 20),
+      new THREE.MeshBasicMaterial({ color: 0xB2BEB5 })
+    );
+    watch.position.y = 0;
+    this.add(watch);
+  }
+
+  _addBaseDescolagem() {
+    const base = new THREE.Mesh(
+      new THREE.BoxGeometry(20, 4, 20),
+      new THREE.MeshBasicMaterial({ color: 0xFFBEBB })
+    );
+    base.position.y = 3;
+    this.add(base);
+  }
+
+  _addBotaoDescolagem() {
+    const botao = new THREE.Mesh(
+      new THREE.BoxGeometry(4, 2, 4),
+      new THREE.MeshBasicMaterial({ color: 0xff0000 })
+    );
+    botao.position.set(0, 6, 8);
+    this.add(botao);
+  }
+
+  _addSuporteCamara() {
+    const suporte = new THREE.Mesh(
+      new THREE.BoxGeometry(4, 1, 4),
+      new THREE.MeshBasicMaterial({ color: 0x0000ff })
+    );
+    suporte.position.set(0, 5.5, -8);
+    this.add(suporte);
+  }
+}
 
 /////////////////////
 /* CREATE SCENE(S) */
@@ -45,7 +92,9 @@ function createScene() {
   scene = new THREE.Scene();
   scene.background = BACKGROUND;
 
-  //TODO (ADD OBJECTS)
+  smartWatch = new SmartWatch();
+  smartWatch.position.set(0, 0, 0);
+  scene.add(smartWatch);
 }
 
 //////////////////////
