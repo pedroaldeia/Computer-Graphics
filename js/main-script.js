@@ -46,6 +46,7 @@ class SmartWatch extends THREE.Group {
     this._addBaseDescolagem();
     this._addBotaoDescolagem();
     this._addSuporteCamara();
+    this._addLens();
   }
 
   _addWatch() {
@@ -82,6 +83,19 @@ class SmartWatch extends THREE.Group {
     );
     suporte.position.set(0, 5.5, -8);
     this.add(suporte);
+  }
+
+  _addLens(){
+      const radiusTop = 1.5;  
+      const radiusBottom =  1.5;  
+      const height =  0.3;  
+      const radialSegments = 32;  
+      const lens = new THREE.Mesh (
+        new THREE.CylinderGeometry(radiusTop, radiusBottom, height, radialSegments ),
+        new THREE.MeshBasicMaterial({ color: 0x00ffff })
+      );
+      lens.position.set(0, 6, -8);
+      this.add(lens);
   }
 }
 
