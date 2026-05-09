@@ -1,5 +1,8 @@
 import * as THREE from "three";
 import { createBracelet } from './bracelet.js';
+/// TEMP PLEASE DELETE BEFORE SUBMISSION ///
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+////////////
 // import { perspectiveDepthToViewZ } from "three/src/nodes/display/ViewportDepthNode.js";
 // import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 // import { VRButton } from "three/addons/webxr/VRButton.js";
@@ -26,6 +29,10 @@ let smartWatch, drone;
 // Helpers
 let cameraHelpers = [];
 let helpersVisible = true;
+
+/// TEMP PLEASE DELETE BEFORE SUBMISSION ///
+let controls;
+////////////
 
 // Flags
 let pressed = {
@@ -142,11 +149,11 @@ function setupCameras() {
     frontalCamera.lookAt(scene.position);
     
     orthogonalCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
-    orthogonalCamera.position.set(50, 50, 50);
+    orthogonalCamera.position.set(-50, 10, 50);
     orthogonalCamera.lookAt(scene.position);
 
     perspectiveCamera = new THREE.PerspectiveCamera(70, aspect, 1, 1000);
-    perspectiveCamera.position.set(50, 50, 50);
+    perspectiveCamera.position.set(-50, 10, 50);
     perspectiveCamera.lookAt(scene.position);
 
     camera = perspectiveCamera;
@@ -208,22 +215,42 @@ function toggleWireframe() {
 function update() {
   if (pressed.topCamera) {
     camera = topCamera;
+    /// TEMP PLEASE DELETE BEFORE SUBMISSION ///
+    controls.object = camera;
+    controls.update();
+    ////////////
     pressed.topCamera = false;
   }
   if (pressed.lateralCamera) {
     camera = lateralCamera;
+    /// TEMP PLEASE DELETE BEFORE SUBMISSION ///
+    controls.object = camera;
+    controls.update();
+    ////////////
     pressed.lateralCamera = false;
   }
   if (pressed.frontalCamera) {
     camera = frontalCamera;
+    /// TEMP PLEASE DELETE BEFORE SUBMISSION ///
+    controls.object = camera;
+    controls.update();
+    ////////////
     pressed.frontalCamera = false;
   }
   if (pressed.orthogonalCamera) {
     camera = orthogonalCamera;
+    /// TEMP PLEASE DELETE BEFORE SUBMISSION ///
+    controls.object = camera;
+    controls.update();
+    ////////////
     pressed.orthogonalCamera = false;
   }
   if (pressed.perspectiveCamera) {
     camera = perspectiveCamera;
+    /// TEMP PLEASE DELETE BEFORE SUBMISSION ///
+    controls.object = camera;
+    controls.update();
+    ////////////
     pressed.perspectiveCamera = false;
   }
 }
@@ -246,6 +273,20 @@ function init() {
   createScene();
   setupCameras();
 
+  //////////////////////////////
+  // TEMP PLEASE DELETE BEFORE SUBMISSION
+  //////////////////////////////
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.target.set(0, 0, 0);
+  controls.panSpeed = 1.5;
+  controls.zoomSpeed = 1.2;
+  controls.rotateSpeed = 1.0;
+  //////////////////////////////
+  //////////////////////////////
+  //////////////////////////////
+
   window.addEventListener("resize", onResize);
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("keyup", onKeyUp);
@@ -256,6 +297,9 @@ function init() {
 /////////////////////
 function animate() {
   update();
+  // TEMP PLEASE DELETE BEFORE SUBMISSION //
+  if (controls) controls.update();
+  //////////////////////////////
   requestAnimationFrame(animate);
   render();
 }
@@ -306,6 +350,15 @@ function onKeyDown(e) {
         helper.visible = helpersVisible;
       });
       break;
+    
+    // TEMP PLEASE DELETE BEFORE SUBMISSION
+    case 65: //A
+    case 97: //a
+      scene.traverse((node) => {
+        if (node instanceof THREE.Mesh) node.material.wireframe = !node.material.wireframe;
+      });
+      break;
+    //////////////////////////////
   }
 }
 
