@@ -92,6 +92,10 @@ class Drone extends THREE.Group {
     return 15;
   }
 
+  _getGuardRadius() {
+    return 5;
+  }
+
   _addBaseDescolagem() {
     const base = new THREE.Mesh(
       new THREE.BoxGeometry(20, 4, 20),
@@ -126,16 +130,6 @@ class Drone extends THREE.Group {
     lens.position.set(0, 3, -8);
     this.add(lens);
   }
-
-  _addVeryNiceThing() {
-    const thing = new THREE.Mesh(
-      new THREE.BoxGeometry(5, 5, 5),
-      new THREE.MeshBasicMaterial({ color: 0x00ff00 })
-    );
-    thing.position.set(40, 0, 0);
-    // thing.rotation.y = Math.PI / 4;
-    this.add(thing);
-  }
   
   _addRotorExtension() {
     const rotorExtension1 = new THREE.Mesh(
@@ -164,9 +158,9 @@ class Drone extends THREE.Group {
     this._addGuards(rotorExtensions);
 
     rotorExtension1.position.set(10, 0, 10)
-    rotorExtension2.position.set(-10, 0, 10)
+    rotorExtension2.position.set(10, 0, -10)
     rotorExtension3.position.set(-10, 0, -10)
-    rotorExtension4.position.set(10, 0, -10)
+    rotorExtension4.position.set(-10, 0, 10)
 
     
     rotorExtensions.forEach((rotor, index) => {
@@ -176,27 +170,13 @@ class Drone extends THREE.Group {
   }
 
   _addGuards(rotorExtensions) {
-    const guard1 = new THREE.Mesh(
-      new THREE.TorusGeometry(5, 0.5, 4, 100),
+    const guards = [0, 1, 2, 3].map(() => new THREE.Mesh(
+      new THREE.TorusGeometry(this._getGuardRadius(), 0.5, 4, 100),
       new THREE.MeshBasicMaterial({ color: 0xabcdef })
-    )
-    const guard2 = new THREE.Mesh(
-      new THREE.TorusGeometry(5, 0.5, 4, 100),
-      new THREE.MeshBasicMaterial({ color: 0xabcdef })
-    )
-    const guard3 = new THREE.Mesh(
-      new THREE.TorusGeometry(5, 0.5, 4, 100),
-      new THREE.MeshBasicMaterial({ color: 0xabcdef })
-    )
-    const guard4 = new THREE.Mesh(
-      new THREE.TorusGeometry(5, 0.5, 4, 100),
-      new THREE.MeshBasicMaterial({ color: 0xabcdef })
-    )
-    const guards = [guard1, guard2, guard3, guard4];
-    const centers = this._getRotorCenters();
+    ));
 
     guards.forEach((guard, index) => {
-      guard.position.set(this._getExtensionX()/2, 0, 0);
+      guard.position.set(this._getExtensionX()/2 + this._getGuardRadius(), 0, 0);
       guard.rotation.x = Math.PI / 2;
       rotorExtensions[index].add(guard);
     });
@@ -221,7 +201,7 @@ class Drone extends THREE.Group {
     );
 
     guards.forEach((guard, index) => {
-      guard.position.set(this._getExtensionX()/2, 0, 0);
+      guard.position.set(this._getExtensionX()/2 + this._getGuardRadius(), 0, 0);
       guard.rotation.x = Math.PI / 2;
       rotorExtensions[index].add(guard);
     });
