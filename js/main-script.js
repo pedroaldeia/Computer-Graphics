@@ -75,6 +75,21 @@ class Drone extends THREE.Group {
     this._addBotaoDescolagem();
     this._addSuporteCamara();
     this._addLens();
+    this._addRotorExtension();
+  }
+
+  _getRotorCenters() {
+    const d = 18.6;
+    return [
+      new THREE.Vector3(d, 0, d),
+      new THREE.Vector3(-d, 0, d),
+      new THREE.Vector3(-d, 0, -d),
+      new THREE.Vector3(d, 0, -d),
+    ];
+  }
+
+  _getExtensionX() {
+    return 15;
   }
 
   _addBaseDescolagem() {
@@ -112,6 +127,133 @@ class Drone extends THREE.Group {
     this.add(lens);
   }
 
+  _addVeryNiceThing() {
+    const thing = new THREE.Mesh(
+      new THREE.BoxGeometry(5, 5, 5),
+      new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+    );
+    thing.position.set(40, 0, 0);
+    // thing.rotation.y = Math.PI / 4;
+    this.add(thing);
+  }
+  
+  _addRotorExtension() {
+    const rotorExtension1 = new THREE.Mesh(
+      new THREE.BoxGeometry(this._getExtensionX(), 0.5, 4),
+      new THREE.MeshBasicMaterial({ color: 0xabcdef })
+    )
+    const rotorExtension2 = new THREE.Mesh(
+      new THREE.BoxGeometry(this._getExtensionX(), 0.5, 4),
+      new THREE.MeshBasicMaterial({ color: 0xabcdef })
+    )
+    const rotorExtension3 = new THREE.Mesh(
+      new THREE.BoxGeometry(this._getExtensionX(), 0.5, 4),
+      new THREE.MeshBasicMaterial({ color: 0xabcdef })
+    )
+    const rotorExtension4 = new THREE.Mesh(
+      new THREE.BoxGeometry(this._getExtensionX(), 0.5, 4),
+      new THREE.MeshBasicMaterial({ color: 0xabcdef })
+    )
+    const rotorExtensions = [
+      rotorExtension1,
+      rotorExtension2,
+      rotorExtension3,
+      rotorExtension4,
+    ];
+
+    this._addGuards(rotorExtensions);
+
+    rotorExtension1.position.set(10, 0, 10)
+    rotorExtension2.position.set(-10, 0, 10)
+    rotorExtension3.position.set(-10, 0, -10)
+    rotorExtension4.position.set(10, 0, -10)
+
+    
+    rotorExtensions.forEach((rotor, index) => {
+      rotor.rotation.y = index * (Math.PI / 2) - (Math.PI / 4);
+      this.add(rotor);
+    });
+  }
+
+  _addGuards(rotorExtensions) {
+    const guard1 = new THREE.Mesh(
+      new THREE.TorusGeometry(5, 0.5, 4, 100),
+      new THREE.MeshBasicMaterial({ color: 0xabcdef })
+    )
+    const guard2 = new THREE.Mesh(
+      new THREE.TorusGeometry(5, 0.5, 4, 100),
+      new THREE.MeshBasicMaterial({ color: 0xabcdef })
+    )
+    const guard3 = new THREE.Mesh(
+      new THREE.TorusGeometry(5, 0.5, 4, 100),
+      new THREE.MeshBasicMaterial({ color: 0xabcdef })
+    )
+    const guard4 = new THREE.Mesh(
+      new THREE.TorusGeometry(5, 0.5, 4, 100),
+      new THREE.MeshBasicMaterial({ color: 0xabcdef })
+    )
+    const guards = [guard1, guard2, guard3, guard4];
+    const centers = this._getRotorCenters();
+
+    guards.forEach((guard, index) => {
+      guard.position.set(this._getExtensionX()/2, 0, 0);
+      guard.rotation.x = Math.PI / 2;
+      rotorExtensions[index].add(guard);
+    });
+  }
+
+  _rotorConnections(rotorExtensions) {
+    const connection1 = new THREE.Mesh(
+      new THREE.BoxGeometry(10, 0.5, 0.5),
+      new THREE.MeshBasicMaterial({ color: 0xabcdef })
+    );
+    const connection2 = new THREE.Mesh(
+      new THREE.BoxGeometry(10, 0.5, 0.5),
+      new THREE.MeshBasicMaterial({ color: 0xabcdef })
+    );
+    const connection3 = new THREE.Mesh(
+      new THREE.BoxGeometry(10, 0.5, 0.5),
+      new THREE.MeshBasicMaterial({ color: 0xabcdef })
+    );
+    const connection4 = new THREE.Mesh(
+      new THREE.BoxGeometry(10, 0.5, 0.5),
+      new THREE.MeshBasicMaterial({ color: 0xabcdef })
+    );
+
+    guards.forEach((guard, index) => {
+      guard.position.set(this._getExtensionX()/2, 0, 0);
+      guard.rotation.x = Math.PI / 2;
+      rotorExtensions[index].add(guard);
+    });
+  }
+
+
+  _addRotors() {
+    const rotor1 = new THREE.Mesh(
+      new THREE.CylinderGeometry(1, 1, 0.5, 32),
+      new THREE.MeshBasicMaterial({ color: 0xabcdef })
+    );
+    const rotor2 = new THREE.Mesh(
+      new THREE.CylinderGeometry(1, 1, 0.5, 32),
+      new THREE.MeshBasicMaterial({ color: 0xabcdef })
+    );
+    const rotor3 = new THREE.Mesh(
+      new THREE.CylinderGeometry(1, 1, 0.5, 32),
+      new THREE.MeshBasicMaterial({ color: 0xabcdef })
+    );
+    const rotor4 = new THREE.Mesh(
+      new THREE.CylinderGeometry(1, 1, 0.5, 32),
+      new THREE.MeshBasicMaterial({ color: 0xabcdef })
+    );
+
+    const rotors = [rotor1, rotor2, rotor3, rotor4];
+    const centers = this._getRotorCenters();
+
+    rotors.forEach((rotor, index) => {
+      rotor.position.copy(centers[index]);
+      this.add(rotor);
+    });
+  }
 }
 
 /////////////////////
