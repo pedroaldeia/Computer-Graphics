@@ -21,7 +21,7 @@ let orthogonalCamera;
 let renderer, scene;
 let camera;
 
-let smartWatch;
+let smartWatch, drone;
 
 // Helpers
 let cameraHelpers = [];
@@ -44,10 +44,6 @@ class SmartWatch extends THREE.Group {
     super();
 
     this._addWatch();
-    this._addBaseDescolagem();
-    this._addBotaoDescolagem();
-    this._addSuporteCamara();
-    this._addLens();
   }
 
   _addWatch() {
@@ -55,7 +51,6 @@ class SmartWatch extends THREE.Group {
       new THREE.BoxGeometry(20, 2, 20),
       new THREE.MeshBasicMaterial({ color: 0xB2BEB5 })
     );
-    watch.position.y = 0;
     this.add(watch);
     
     const bracelet = createBracelet();
@@ -63,13 +58,23 @@ class SmartWatch extends THREE.Group {
     this.add(bracelet);
     
   }
+}
+
+class Drone extends THREE.Group {
+  constructor() {
+    super();
+
+    this._addBaseDescolagem();
+    this._addBotaoDescolagem();
+    this._addSuporteCamara();
+    this._addLens();
+  }
 
   _addBaseDescolagem() {
     const base = new THREE.Mesh(
       new THREE.BoxGeometry(20, 4, 20),
       new THREE.MeshBasicMaterial({ color: 0xFFBEBB })
     );
-    base.position.y = 3;
     this.add(base);
   }
 
@@ -78,7 +83,7 @@ class SmartWatch extends THREE.Group {
       new THREE.BoxGeometry(4, 2, 4),
       new THREE.MeshBasicMaterial({ color: 0xff0000 })
     );
-    botao.position.set(0, 6, 8);
+    botao.position.set(0, 3, 8);
     this.add(botao);
   }
 
@@ -87,7 +92,7 @@ class SmartWatch extends THREE.Group {
       new THREE.BoxGeometry(4, 1, 4),
       new THREE.MeshBasicMaterial({ color: 0x0000ff })
     );
-    suporte.position.set(0, 5.5, -8);
+    suporte.position.set(0, 2.5, -8);
     this.add(suporte);
   }
 
@@ -96,7 +101,7 @@ class SmartWatch extends THREE.Group {
       new THREE.CylinderGeometry(1.5, 1.5, 0.3, 32),
       new THREE.MeshBasicMaterial({ color: 0x00ffff })
     );
-    lens.position.set(0, 6, -8);
+    lens.position.set(0, 3, -8);
     this.add(lens);
   }
 
@@ -112,6 +117,10 @@ function createScene() {
   smartWatch = new SmartWatch();
   smartWatch.position.set(0, 0, 0);
   scene.add(smartWatch);
+  
+  drone = new Drone();
+  drone.position.set(0, 3, 0);
+  scene.add(drone);
 }
 
 //////////////////////
