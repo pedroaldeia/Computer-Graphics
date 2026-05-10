@@ -22,6 +22,7 @@ let lateralCamera;
 let frontalCamera;
 let perspectiveCamera;
 let orthogonalCamera;
+let mobileCamera;
 let renderer, scene;
 let camera;
 
@@ -43,6 +44,7 @@ let pressed = {
   lateralCamera: false,
   frontalCamera: false,
   orthogonalCamera: false,
+  mobileCamera: false,
   perspectiveCamera: false,
 };
 
@@ -146,6 +148,16 @@ class Drone extends THREE.Group {
     );
     lens.position.set(0, 3, -8);
     this.add(lens);
+
+    this.mobileCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
+    this.mobileCamera.position.set(0, 6, -8);
+    this.mobileCamera.lookAt(0, 6, -1000);
+    scene.add(this.mobileCamera);
+    mobileCamera = this.mobileCamera;
+
+    const mobileHelper = new THREE.CameraHelper(this.mobileCamera);
+    scene.add(mobileHelper);
+    cameraHelpers.push(mobileHelper);
   }
   
   _addRotorExtension() {
@@ -430,6 +442,10 @@ function update() {
     ////////////
     pressed.perspectiveCamera = false;
   }
+  if (pressed.mobileCamera) {
+    camera = mobileCamera;
+    pressed.mobileCamera = false;
+  }
 }
 
 /////////////
@@ -523,6 +539,10 @@ function onKeyDown(e) {
     case 53:
     case 101:
       pressed.perspectiveCamera = true; // 5
+      break;
+    case 54:
+    case 102:
+      pressed.mobileCamera = true; // 6
       break;
 
     // H
