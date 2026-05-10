@@ -258,6 +258,22 @@ class Baloon extends THREE.Group {
   }
 }
 
+function addRandomBalloons() {
+  const numberOfBalloons = 4;
+  const fixedY = 35;
+
+  for (let i = 0; i < numberOfBalloons; i++) {
+    const balloon = new Baloon();
+    
+    const randomX = (Math.random() * 80) - 40; // [-40, 40]
+    const randomY = (Math.random() * 20) + fixedY; // [fixedY, fixedY + 20]
+    const randomZ = (Math.random() * 80) - 40;
+
+    balloon.position.set(randomX, randomY, randomZ);
+    scene.add(balloon);
+  }
+}
+
 /////////////////////
 /* CREATE SCENE(S) */
 /////////////////////
@@ -273,9 +289,7 @@ function createScene() {
   drone.position.set(0, 3, 0);
   scene.add(drone);
 
-  baloon = new Baloon();
-  baloon.position.set(10, 30, 0);
-  scene.add(baloon);
+  addRandomBalloons();
 
   const targets = [];
   scene.traverse((node) => {
