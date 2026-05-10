@@ -544,20 +544,15 @@ function onKeyDown(e) {
       scene.traverse((node) => {
         if (node instanceof THREE.Mesh) node.material.wireframe = wireframeActive;
       });
-
       toggleHUDKey('key-7', wireframeActive);
       break;
   }
 }
 
 function initializeHUD() {
-    const perspectiveEl = document.getElementById('key-5');
-    if (perspectiveEl) perspectiveEl.classList.add('active');
-
-    const helpersEl = document.getElementById('key-h');
-    if (helpersEl && helpersVisible) {
-        helpersEl.classList.add('active');
-    }
+  toggleHUDKey('key-5', true);
+  toggleHUDKey('key-h', helpersVisible);
+  toggleHUDKey('key-7', false);
 }
 
 function updateHUD(keyCode, isPressed) {
