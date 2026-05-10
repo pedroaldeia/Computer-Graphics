@@ -31,6 +31,7 @@ let smartWatch, drone, baloon;
 let cameraHelpers = [];
 let axesHelpers = [];
 let helpersVisible = true;
+let wireframeActive = false;
 
 /// TEMP PLEASE DELETE BEFORE SUBMISSION ///
 let controls;
@@ -448,6 +449,7 @@ function init() {
 
   createScene();
   setupCameras();
+  initializeHUD();
 
   //////////////////////////////
   // TEMP PLEASE DELETE BEFORE SUBMISSION
@@ -465,7 +467,6 @@ function init() {
 
   window.addEventListener("resize", onResize);
   window.addEventListener("keydown", onKeyDown);
-  window.addEventListener("keyup", onKeyUp);
 }
 
 /////////////////////
@@ -500,6 +501,7 @@ function onResize() {
 /* KEY DOWN CALLBACK */
 ///////////////////////
 function onKeyDown(e) {
+  updateHUD(e.keyCode, true);
   switch (e.keyCode) {
     // Camera controls
     case 49:
@@ -533,23 +535,64 @@ function onKeyDown(e) {
       axesHelpers.forEach((axis) => {
         axis.visible = helpersVisible;
       });
+      toggleHUDKey('key-h', helpersVisible);
       break;
-    
-    case 55: //7
-    case 103: //7
+
+    // 7
+    case 55: case 103:
+      wireframeActive = !wireframeActive;
       scene.traverse((node) => {
-        if (node instanceof THREE.Mesh) node.material.wireframe = !node.material.wireframe;
+        if (node instanceof THREE.Mesh) node.material.wireframe = wireframeActive;
       });
+
+      toggleHUDKey('key-7', wireframeActive);
       break;
   }
 }
 
-///////////////////////
-/* KEY UP CALLBACK */
-///////////////////////
-function onKeyUp(e) {
-    //TODO
+function initializeHUD() {
+    const perspectiveEl = document.getElementById('key-5');
+    if (perspectiveEl) perspectiveEl.classList.add('active');
+
+    const helpersEl = document.getElementById('key-h');
+    if (helpersEl && helpersVisible) {
+        helpersEl.classList.add('active');
     }
+}
+
+function updateHUD(keyCode, isPressed) {
+  if (keyCode >= 49 && keyCode <= 54 || keyCode >= 97 && keyCode <= 102) {
+    let elementId = '';
+
+    switch (keyCode) {
+      case 49: case 97:  elementId = 'key-1'; break;
+      case 50: case 98:  elementId = 'key-2'; break;
+      case 51: case 99:  elementId = 'key-3'; break;
+      case 52: case 100: elementId = 'key-4'; break;
+      case 53: case 101: elementId = 'key-5'; break;
+      case 54: case 102: elementId = 'key-6'; break;
+    }
+
+    const el = document.getElementById(elementId);
+      if (isPressed) {
+        ['key-1', 'key-2', 'key-3', 'key-4', 'key-5', 'key-6'].forEach(id => {
+          document.getElementById(id).classList.remove('active');
+        });
+        el.classList.add('active');
+      }
+  }
+}
+
+function toggleHUDKey(elementId, isActive) {
+  const el = document.getElementById(elementId);
+  if (el) {
+    if (isActive) {
+      el.classList.add('active');
+    } else {
+      el.classList.remove('active');
+    }
+  }
+}
 
 init();
 animate(); // Devia estar no init???
