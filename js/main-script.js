@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import Stats from 'stats';
 import { createBracelet } from './bracelet.js';
 /// TEMP PLEASE DELETE BEFORE SUBMISSION ///
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -43,6 +44,12 @@ let pressed = {
   orthogonalCamera: false,
   perspectiveCamera: false,
 };
+
+var stats = new Stats();
+stats.showPanel(0);
+document.body.appendChild( stats.dom );
+stats.dom.style.transform = 'scale(1.5)';
+stats.dom.style.transformOrigin = 'top left';
 
 ///////////////////////
 /* CLASS DEFINITIONS */
@@ -465,12 +472,16 @@ function init() {
 /* ANIMATION CYCLE */
 /////////////////////
 function animate() {
+  stats.begin();
+
   update();
   // TEMP PLEASE DELETE BEFORE SUBMISSION //
   if (controls) controls.update();
   //////////////////////////////
-  requestAnimationFrame(animate);
   render();
+	
+  stats.end();
+  requestAnimationFrame(animate);
 }
 
 ////////////////////////////
