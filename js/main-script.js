@@ -28,6 +28,7 @@ let smartWatch, drone;
 
 // Helpers
 let cameraHelpers = [];
+let axesHelpers = [];
 let helpersVisible = true;
 
 /// TEMP PLEASE DELETE BEFORE SUBMISSION ///
@@ -234,6 +235,19 @@ function createScene() {
   drone = new Drone();
   drone.position.set(0, 3, 0);
   scene.add(drone);
+
+  const targets = [];
+  scene.traverse((node) => {
+    if (node.isObject3D && !node.isAxesHelper && !node.isCameraHelper) {
+      targets.push(node);
+    }
+  });
+
+  targets.forEach((node) => {
+    const localAxes = new THREE.AxesHelper(5);
+    node.add(localAxes);
+    axesHelpers.push(localAxes);
+  });
 }
 
 //////////////////////
@@ -448,6 +462,10 @@ function onKeyDown(e) {
       helpersVisible = !helpersVisible;
       cameraHelpers.forEach((helper) => {
         helper.visible = helpersVisible;
+      });
+
+      axesHelpers.forEach((axis) => {
+        axis.visible = helpersVisible;
       });
       break;
     
