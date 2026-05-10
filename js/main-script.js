@@ -309,12 +309,6 @@ function handleCollisions() {
     //TODO
     }
 
-function toggleWireframe() {
-  scene.traverse((node) => {
-    if (node instanceof THREE.Mesh) node.material.wireframe = !node.material.wireframe;
-  });
-}
-
 ////////////
 /* UPDATE */
 ////////////
