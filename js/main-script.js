@@ -86,14 +86,8 @@ class Drone extends THREE.Group {
     this._addRotorExtension();
   }
 
-  _getRotorCenters() {
-    const d = 18.6;
-    return [
-      new THREE.Vector3(d, 0, d),
-      new THREE.Vector3(-d, 0, d),
-      new THREE.Vector3(-d, 0, -d),
-      new THREE.Vector3(d, 0, -d),
-    ];
+  _getBodyX() {
+    return 20;
   }
 
   _getExtensionX() {
@@ -101,7 +95,7 @@ class Drone extends THREE.Group {
   }
 
   _getGuardRadius() {
-    return 5;
+    return this._getExtensionX()/3;
   }
 
   _getConnectionX() {
@@ -109,9 +103,17 @@ class Drone extends THREE.Group {
   }
 
   _getRotorRadius() {
-    return 1;
+    return this._getGuardRadius()/6;
   }
 
+  _getProppellerLength() {
+    return this._getGuardRadius()*2/3;
+  }
+
+  _getProppellerWidth() {
+    return this._getProppellerLength()/6;
+  }
+ 
   _addBaseDescolagem() {
     const base = new THREE.Mesh(
       new THREE.BoxGeometry(20, 4, 20),
@@ -148,47 +150,28 @@ class Drone extends THREE.Group {
   }
   
   _addRotorExtension() {
-    const rotorExtension1 = new THREE.Mesh(
+    const rotorExtensions = [0, 1, 2, 3].map(() => new THREE.Mesh(
       new THREE.BoxGeometry(this._getExtensionX(), 0.5, 4),
       new THREE.MeshBasicMaterial({ color: 0xabcdef })
-    )
-    const rotorExtension2 = new THREE.Mesh(
-      new THREE.BoxGeometry(this._getExtensionX(), 0.5, 4),
-      new THREE.MeshBasicMaterial({ color: 0xabcdef })
-    )
-    const rotorExtension3 = new THREE.Mesh(
-      new THREE.BoxGeometry(this._getExtensionX(), 0.5, 4),
-      new THREE.MeshBasicMaterial({ color: 0xabcdef })
-    )
-    const rotorExtension4 = new THREE.Mesh(
-      new THREE.BoxGeometry(this._getExtensionX(), 0.5, 4),
-      new THREE.MeshBasicMaterial({ color: 0xabcdef })
-    )
-    const rotorExtensions = [
-      rotorExtension1,
-      rotorExtension2,
-      rotorExtension3,
-      rotorExtension4,
-    ];
+    ));
 
     this._addGuards(rotorExtensions);
     this._addRotorConnections(rotorExtensions);
 
-    rotorExtension1.position.set(10, 0, 10)
-    rotorExtension2.position.set(10, 0, -10)
-    rotorExtension3.position.set(-10, 0, -10)
-    rotorExtension4.position.set(-10, 0, 10)
-
-    
-    rotorExtensions.forEach((rotor, index) => {
-      rotor.rotation.y = index * (Math.PI / 2) - (Math.PI / 4);
-      this.add(rotor);
+    rotorExtensions.forEach((rotorExtension, index) => {
+      rotorExtension.rotation.y = index * (Math.PI / 2) + Math.PI/4;
+      rotorExtension.position.set(
+        this._getBodyX()/2*Math.cos(index * Math.PI / 2 + Math.PI/4),
+        0,
+        this._getBodyX()/2 *(-Math.sin(index * Math.PI / 2 + Math.PI/4))
+      );
+      this.add(rotorExtension);
     });
   }
 
   _addGuards(rotorExtensions) {
     const guards = [0, 1, 2, 3].map(() => new THREE.Mesh(
-      new THREE.TorusGeometry(this._getGuardRadius(), 0.5, 4, 100),
+      new THREE.TorusGeometry(this._getGuardRadius(), this._getGuardRadius()/10, 32, 100),
       new THREE.MeshBasicMaterial({ color: 0xabcdef })
     ));
 
@@ -201,7 +184,7 @@ class Drone extends THREE.Group {
 
   _addRotorConnections(rotorExtensions) {
     const connections = [0, 1, 2, 3].map(() => new THREE.Mesh(
-      new THREE.BoxGeometry(this._getConnectionX(), 0.5, 0.5),
+      new THREE.BoxGeometry(this._getConnectionX(), this._getConnectionX()/10, this._getConnectionX()/10),
       new THREE.MeshBasicMaterial({ color: 0xabcdef }))
     );
 
@@ -216,14 +199,32 @@ class Drone extends THREE.Group {
 
   _addRotors(connections) {
     const rotors = [0, 1, 2, 3].map(() => new THREE.Mesh(
-      new THREE.CylinderGeometry(this._getRotorRadius(), this._getRotorRadius(), 0.5, 32),
+      new THREE.CylinderGeometry(this._getRotorRadius(), this._getRotorRadius(), this._getRotorRadius()/2, 32),
       new THREE.MeshBasicMaterial({ color: 0xabcdef })
     ));
 
     rotors.forEach((rotor, index) => {
       rotor.rotation.x = Math.PI / 2;
+      this._addProppellers(rotor);
       rotor.position.set(this._getConnectionX()/2 + this._getRotorRadius()/2, 0, 0);
       connections[index].add(rotor);
+    });
+  }
+
+  _addProppellers(rotor) {
+    const proppellers = [0, 1, 2, 3].map(() => new THREE.Mesh(
+      new THREE.BoxGeometry(this._getProppellerLength(), this._getProppellerLength()/20, this._getProppellerWidth()),
+      new THREE.MeshBasicMaterial({ color: 0xabcdef })
+    ));
+
+    proppellers.forEach((proppeller, index) => {
+      proppeller.position.set(
+        (this._getRotorRadius() + this._getProppellerLength()/2)*Math.cos(index * Math.PI / 2),
+        0,
+        (this._getRotorRadius() + this._getProppellerLength()/2)*Math.sin(index * Math.PI / 2)
+      );
+      proppeller.rotation.y = index * (Math.PI / 2);
+      rotor.add(proppeller);
     });
   }
 }
