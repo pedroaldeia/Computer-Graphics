@@ -22,6 +22,7 @@ let lateralCamera;
 let frontalCamera;
 let perspectiveCamera;
 let orthogonalCamera;
+let mobileCamera;
 let renderer, scene;
 let camera;
 
@@ -31,6 +32,7 @@ let smartWatch, drone, baloon;
 let cameraHelpers = [];
 let axesHelpers = [];
 let helpersVisible = true;
+let wireframeActive = false;
 
 /// TEMP PLEASE DELETE BEFORE SUBMISSION ///
 let controls;
@@ -42,6 +44,7 @@ let pressed = {
   lateralCamera: false,
   frontalCamera: false,
   orthogonalCamera: false,
+  mobileCamera: false,
   perspectiveCamera: false,
 };
 
@@ -147,6 +150,16 @@ class Drone extends THREE.Group {
     );
     lens.position.set(0, 3, -8);
     this.add(lens);
+
+    this.mobileCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
+    this.mobileCamera.position.set(0, 6, -8);
+    this.mobileCamera.lookAt(0, 6, -1000);
+    scene.add(this.mobileCamera);
+    mobileCamera = this.mobileCamera;
+
+    const mobileHelper = new THREE.CameraHelper(this.mobileCamera);
+    scene.add(mobileHelper);
+    cameraHelpers.push(mobileHelper);
   }
   
   _addRotorExtension() {
@@ -430,6 +443,10 @@ function update() {
     ////////////
     pressed.perspectiveCamera = false;
   }
+  if (pressed.mobileCamera) {
+    camera = mobileCamera;
+    pressed.mobileCamera = false;
+  }
 }
 
 /////////////
@@ -449,6 +466,7 @@ function init() {
 
   createScene();
   setupCameras();
+  initializeHUD();
 
   //////////////////////////////
   // TEMP PLEASE DELETE BEFORE SUBMISSION
@@ -466,7 +484,6 @@ function init() {
 
   window.addEventListener("resize", onResize);
   window.addEventListener("keydown", onKeyDown);
-  window.addEventListener("keyup", onKeyUp);
 }
 
 /////////////////////
@@ -501,6 +518,7 @@ function onResize() {
 /* KEY DOWN CALLBACK */
 ///////////////////////
 function onKeyDown(e) {
+  updateHUD(e.keyCode, true);
   switch (e.keyCode) {
     // Camera controls
     case 49:
@@ -523,6 +541,10 @@ function onKeyDown(e) {
     case 101:
       pressed.perspectiveCamera = true; // 5
       break;
+    case 54:
+    case 102:
+      pressed.mobileCamera = true; // 6
+      break;
 
     // H
     case 72:
@@ -534,23 +556,59 @@ function onKeyDown(e) {
       axesHelpers.forEach((axis) => {
         axis.visible = helpersVisible;
       });
+      toggleHUDKey('key-h', helpersVisible);
       break;
-    
-    case 55: //7
-    case 103: //7
+
+    // 7
+    case 55: case 103:
+      wireframeActive = !wireframeActive;
       scene.traverse((node) => {
-        if (node instanceof THREE.Mesh) node.material.wireframe = !node.material.wireframe;
+        if (node instanceof THREE.Mesh) node.material.wireframe = wireframeActive;
       });
+      toggleHUDKey('key-7', wireframeActive);
       break;
   }
 }
 
-///////////////////////
-/* KEY UP CALLBACK */
-///////////////////////
-function onKeyUp(e) {
-    //TODO
+function initializeHUD() {
+  toggleHUDKey('key-5', true);
+  toggleHUDKey('key-h', helpersVisible);
+  toggleHUDKey('key-7', false);
+}
+
+function updateHUD(keyCode, isPressed) {
+  if (keyCode >= 49 && keyCode <= 54 || keyCode >= 97 && keyCode <= 102) {
+    let elementId = '';
+
+    switch (keyCode) {
+      case 49: case 97:  elementId = 'key-1'; break;
+      case 50: case 98:  elementId = 'key-2'; break;
+      case 51: case 99:  elementId = 'key-3'; break;
+      case 52: case 100: elementId = 'key-4'; break;
+      case 53: case 101: elementId = 'key-5'; break;
+      case 54: case 102: elementId = 'key-6'; break;
     }
+
+    const el = document.getElementById(elementId);
+      if (isPressed) {
+        ['key-1', 'key-2', 'key-3', 'key-4', 'key-5', 'key-6'].forEach(id => {
+          document.getElementById(id).classList.remove('active');
+        });
+        el.classList.add('active');
+      }
+  }
+}
+
+function toggleHUDKey(elementId, isActive) {
+  const el = document.getElementById(elementId);
+  if (el) {
+    if (isActive) {
+      el.classList.add('active');
+    } else {
+      el.classList.remove('active');
+    }
+  }
+}
 
 init();
 animate(); // Devia estar no init???

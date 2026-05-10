@@ -16,7 +16,38 @@
     <title>CG - Project26</title>
   </head>
 
-  <body></body>
+  <body>
+    <div id="hud">
+      <div class="key-item" id="key-1">1: Top View</div>
+      <div class="key-item" id="key-2">2: Lateral View</div>
+      <div class="key-item" id="key-3">3: Frontal View</div>
+      <div class="key-item" id="key-4">4: Orthogonal</div>
+      <div class="key-item" id="key-5">5: Perspective</div>
+      <div class="key-item" id="key-6">6: Mobile Camera</div>
+      <div class="key-item" id="key-7">7: Wireframe</div>
+      <div class="key-item" id="key-h">H: Helpers</div>
+    </div>
+
+    <style>
+      #hud {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        font-family: sans-serif;
+        pointer-events: none;
+        z-index: 100;
+      }
+      .active {
+        background: #44ff44;
+        color: black;
+        font-weight: bold;
+      }
+    </style>
+  </body>
 </html>
 
 
