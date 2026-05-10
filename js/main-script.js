@@ -24,7 +24,7 @@ let orthogonalCamera;
 let renderer, scene;
 let camera;
 
-let smartWatch, drone;
+let smartWatch, drone, baloon;
 
 // Helpers
 let cameraHelpers = [];
@@ -221,6 +221,43 @@ class Drone extends THREE.Group {
   }
 }
 
+class Baloon extends THREE.Group {
+  constructor() {
+    super();
+
+    this._addBody();
+    this._addNode();
+    this._addStrip();
+  }
+
+  _addBody() {
+    const body = new THREE.Mesh(
+      new THREE.SphereGeometry(7, 32, 32),
+      new THREE.MeshBasicMaterial({ color: 0xFF4444 })
+    );
+    this.add(body);
+  }
+  
+  _addNode() {
+    const node = new THREE.Mesh(
+      new THREE.ConeGeometry(1.5, 2, 16),
+      new THREE.MeshBasicMaterial({ color: 0xCC0000 })
+    );
+    node.position.y = -7;
+    this.add(node);
+  }
+
+  _addStrip() {
+    const strip = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.1, 0.1, 6, 8),
+      new THREE.MeshBasicMaterial({ color: 0xEEEEEE })
+    );
+
+    strip.position.y = -11; 
+    this.add(strip);
+  }
+}
+
 /////////////////////
 /* CREATE SCENE(S) */
 /////////////////////
@@ -235,6 +272,10 @@ function createScene() {
   drone = new Drone();
   drone.position.set(0, 3, 0);
   scene.add(drone);
+
+  baloon = new Baloon();
+  baloon.position.set(10, 30, 0);
+  scene.add(baloon);
 
   const targets = [];
   scene.traverse((node) => {
