@@ -72,6 +72,7 @@ class SmartWatch extends THREE.Group {
     this.add(watch);
     
     const bracelet = createBracelet();
+    bracelet.name = "bracelet";
     bracelet.position.y = -0.8;
     this.add(bracelet);
     

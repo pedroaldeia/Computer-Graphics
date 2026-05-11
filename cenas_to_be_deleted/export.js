@@ -9,9 +9,15 @@ function exportDroneGLTF() {
 
   const exportGroup = new THREE.Group();
   exportGroup.add(drone.clone());
+  exportGroup.add(smartWatch.clone());
 
   const toRemove = [];
   exportGroup.traverse((node) => {
+    if (node.name === "bracelet" || node.isAxesHelper || node.isCameraHelper) {
+      toRemove.push(node);
+      return; 
+    }
+
     if (node.isMesh) {
       node.geometry = node.geometry.clone();
       node.material = node.material.clone();
@@ -19,8 +25,14 @@ function exportDroneGLTF() {
       toRemove.push(node);
     }
   });
-  toRemove.forEach((node) => node.parent?.remove(node));
 
+  toRemove.forEach((node) => {
+    if (node.parent) {
+      node.parent.remove(node);
+    }
+  });
+
+  // Perform the export
   exporter.parse(
     exportGroup,
     (gltf) => {
@@ -30,7 +42,7 @@ function exportDroneGLTF() {
 
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'scene.gltf';
+      link.download = 'drone_and_watch.gltf';
       link.click();
 
       URL.revokeObjectURL(url);
