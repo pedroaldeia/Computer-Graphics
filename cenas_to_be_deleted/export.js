@@ -1,54 +1,45 @@
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 
 case 69: // Key 'E'
-      exportGLTF();
+      exportDroneGLTF();
       break;
 
-function exportGLTF() {
+function exportDroneGLTF() {
   const exporter = new GLTFExporter();
 
-  // 1. Optional: Hide helpers before exporting so they aren't included
-  cameraHelpers.forEach(h => h.visible = false);
+  // Export both drone and smartwatch together
+  const exportGroup = new THREE.Group();
+  exportGroup.add(drone.clone());
+  exportGroup.add(smartWatch.clone());
 
-  const options = {
-    trs: false,        // Export position/rotation/scale instead of matrices
-    onlyVisible: true, // Only export what is currently visible
-    binary: false       // true = .glb (single file), false = .gltf (JSON)
-  };
+  const toRemove = [];
+  exportGroup.traverse((node) => {
+    if (node.isMesh) {
+      node.geometry = node.geometry.clone();
+      node.material = node.material.clone();
+    } else if (!node.isGroup && node !== exportGroup) {
+      toRemove.push(node);
+    }
+  });
+  toRemove.forEach((node) => node.parent?.remove(node));
 
   exporter.parse(
-    scene,
-    function (result) {
-      if (result instanceof ArrayBuffer) {
-        saveArrayBuffer(result, 'scene.glTF');
-      } else {
-        const output = JSON.stringify(result, null, 2);
-        saveString(output, 'scene.gltf');
-      }
-      
-      // Restore helpers visibility
-      if (helpersVisible) cameraHelpers.forEach(h => h.visible = true);
+    exportGroup,
+    (gltf) => {
+      const output = JSON.stringify(gltf, null, 2);
+      const blob = new Blob([output], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'scene.gltf';
+      link.click();
+
+      URL.revokeObjectURL(url);
     },
-    function (error) {
-      console.error('An error happened during export', error);
+    (error) => {
+      console.error('GLTF export failed:', error);
     },
-    options
+    { binary: false }
   );
-}
-
-// Helper to trigger the browser download for .glb
-function saveArrayBuffer(buffer, filename) {
-  save(new Blob([buffer], { type: 'application/octet-stream' }), filename);
-}
-
-// Helper to trigger the browser download for .gltf
-function saveString(text, filename) {
-  save(new Blob([text], { type: 'text/plain' }), filename);
-}
-
-function save(blob, filename) {
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = filename;
-  link.click();
 }
