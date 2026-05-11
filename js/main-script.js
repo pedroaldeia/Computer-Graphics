@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import Stats from 'stats';
 import { createBracelet } from './bracelet.js';
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 /// TEMP PLEASE DELETE BEFORE SUBMISSION ///
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 ////////////
@@ -70,12 +71,26 @@ class SmartWatch extends THREE.Group {
       new THREE.MeshBasicMaterial({ color: 0xB2BEB5 })
     );
     this.add(watch);
-    
-    const bracelet = createBracelet();
-    bracelet.name = "bracelet";
-    bracelet.position.y = -0.8;
-    this.add(bracelet);
-    
+
+    const loader = new GLTFLoader();
+    loader.load('./scene.gltf', (gltf) => {
+      const bracelet = gltf.scene;
+      bracelet.name = "bracelet";
+      bracelet.position.set(0, -3, 0);
+      bracelet.scale.set(0.45, 0.45, 0.45);
+      bracelet.traverse((node) => {
+      if (node.isMesh) {
+        node.material = new THREE.MeshBasicMaterial({
+          color: 0x536267,
+        });
+      }
+      });
+      this.add(bracelet);
+    }, 
+    undefined,
+    (error) => {
+      console.error('An error happened while loading the bracelet:', error);
+    });
   }
 }
 
