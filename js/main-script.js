@@ -128,10 +128,10 @@ class Drone extends THREE.Group {
 
   _addBotaoDescolagem() {
     const botao = new THREE.Mesh(
-      new THREE.BoxGeometry(4, 2, 4),
+      new THREE.BoxGeometry(4, 1.5, 4),
       new THREE.MeshBasicMaterial({ color: 0xff0000 })
     );
-    botao.position.set(0, 3, 8);
+    botao.position.set(0, 2.75, 8);
     this.add(botao);
   }
 
@@ -154,7 +154,7 @@ class Drone extends THREE.Group {
 
     this.mobileCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
     this.mobileCamera.position.set(0, 6, -8);
-    this.mobileCamera.lookAt(0, 6, -1000);
+    this.mobileCamera.lookAt(0, 6, 1000);
     scene.add(this.mobileCamera);
     mobileCamera = this.mobileCamera;
 
