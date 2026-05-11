@@ -7,10 +7,8 @@ case 69: // Key 'E'
 function exportDroneGLTF() {
   const exporter = new GLTFExporter();
 
-  // Export both drone and smartwatch together
   const exportGroup = new THREE.Group();
   exportGroup.add(drone.clone());
-  exportGroup.add(smartWatch.clone());
 
   const toRemove = [];
   exportGroup.traverse((node) => {
