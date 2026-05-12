@@ -61,6 +61,13 @@ let movementState = {
 
 // Clock for frame delta time
 const clock = new THREE.Clock();
+// Rotation input state (I/K + O/L pitch)
+let rotationState = {
+  yawLeft: false, // I
+  yawRight: false, // K
+  pitchUp: false, // O
+  pitchDown: false, // L
+};
 
 var stats = new Stats();
 stats.showPanel(0);
@@ -118,7 +125,12 @@ class Drone extends THREE.Group {
     this._addRotorExtension();
     this._rotors = [];
     this._rotors = [];
+    this._rotors = [];
     this._moveSpeed = 100; // units per second (tweakable)
+    this._rotationSpeed = Math.PI; // radians per second (tweakable)
+    this._pitchSpeed = Math.PI / 2; // radians per second (tweakable)
+    this._pitchLimitMin = -Math.PI / 6; // -30 degrees
+    this._pitchLimitMax = Math.PI / 6;  // +30 degrees
 
     // Folding state for rotor extensions (arms)
     this._foldProgress = 0; // 0 = unfolded, 1 = folded
@@ -334,6 +346,24 @@ class Drone extends THREE.Group {
     const dir = dirVector.clone().normalize();
     const distance = this._moveSpeed * (deltaTime || 0);
     this.position.addScaledVector(dir, distance);
+  }
+
+  // Rotate drone around Y axis (yaw). direction: -1 (right) or 1 (left). deltaTime: seconds
+  rotateYaw(direction, deltaTime) {
+    if (!this.isArmsExtended()) return;
+    if (!direction) return;
+    const angle = direction * this._rotationSpeed * (deltaTime || 0);
+    this.rotation.y += angle;
+  }
+
+  // Rotate drone around X axis (pitch). direction: 1 (pitch up) or -1 (pitch down). deltaTime: seconds
+  rotatePitch(direction, deltaTime) {
+    if (!this.isArmsExtended()) return;
+    if (!direction) return;
+    const angle = direction * this._pitchSpeed * (deltaTime || 0);
+    const newPitch = this.rotation.x + angle;
+    // clamp pitch between limits
+    this.rotation.x = Math.min(Math.max(newPitch, this._pitchLimitMin), this._pitchLimitMax);
   }
 }
 
@@ -553,6 +583,16 @@ function update() {
   if (moveVec.lengthSq() > 0) {
     drone.moveDirection(moveVec, delta);
   }
+  // Continuous rotation (yaw) from I/K keys
+  const yawDir = (rotationState.yawLeft ? 1 : 0) + (rotationState.yawRight ? -1 : 0);
+  if (yawDir !== 0 && drone && typeof drone.rotateYaw === 'function') {
+    drone.rotateYaw(yawDir, delta);
+  }
+  // Continuous rotation (pitch) from O/L keys (limited)
+  const pitchDir = (rotationState.pitchUp ? 1 : 0) + (rotationState.pitchDown ? -1 : 0);
+  if (pitchDir !== 0 && drone && typeof drone.rotatePitch === 'function') {
+    drone.rotatePitch(pitchDir, delta);
+  }
   // Animate drone arms folding/unfolding
   drone.updateArms();
   drone.rotateRotors();
@@ -704,6 +744,20 @@ function onKeyDown(e) {
     case 74: case 106: // J
       movementState.backward = true;
       break;
+    // I / K - yaw rotation around Y axis
+    case 73: case 105: // I
+      rotationState.yawLeft = true;
+      break;
+    case 75: case 107: // K
+      rotationState.yawRight = true;
+      break;
+    // O / L - pitch rotation around X axis (limited)
+    case 79: case 111: // O
+      rotationState.pitchUp = true;
+      break;
+    case 76: case 108: // L
+      rotationState.pitchDown = true;
+      break;
   }
 }
 
@@ -729,6 +783,18 @@ function onKeyUp(e) {
       break;
     case 74: case 106: // J
       movementState.backward = false;
+      break;
+    case 73: case 105: // I
+      rotationState.yawLeft = false;
+      break;
+    case 75: case 107: // K
+      rotationState.yawRight = false;
+      break;
+    case 79: case 111: // O
+      rotationState.pitchUp = false;
+      break;
+    case 76: case 108: // L
+      rotationState.pitchDown = false;
       break;
   }
 }
