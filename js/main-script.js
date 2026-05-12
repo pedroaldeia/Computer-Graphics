@@ -49,6 +49,19 @@ let pressed = {
   perspectiveCamera: false,
 };
 
+// Movement state for continuous input (A/D, W/S, U/J)
+let movementState = {
+  left: false,
+  right: false,
+  up: false, // W
+  down: false, // S
+  forward: false, // U
+  backward: false, // J
+};
+
+// Clock for frame delta time
+const clock = new THREE.Clock();
+
 var stats = new Stats();
 stats.showPanel(0);
 document.body.appendChild( stats.dom );
@@ -104,6 +117,8 @@ class Drone extends THREE.Group {
     this._addLens();
     this._addRotorExtension();
     this._rotors = [];
+    this._rotors = [];
+    this._moveSpeed = 100; // units per second (tweakable)
 
     // Folding state for rotor extensions (arms)
     this._foldProgress = 0; // 0 = unfolded, 1 = folded
@@ -304,7 +319,22 @@ class Drone extends THREE.Group {
 
     });
   }
-}
+  }
+
+  // Return true when arms are fully extended (fully unfolded)
+  isArmsExtended() {
+    return this._foldProgress === 0 && this._targetFold === 0;
+  }
+
+  // Move drone in an arbitrary direction vector (constant speed)
+  // dirVector: THREE.Vector3 (direction); deltaTime: seconds
+  moveDirection(dirVector, deltaTime) {
+    if (!this.isArmsExtended()) return;
+    if (!dirVector || dirVector.lengthSq() === 0) return;
+    const dir = dirVector.clone().normalize();
+    const distance = this._moveSpeed * (deltaTime || 0);
+    this.position.addScaledVector(dir, distance);
+  }
 }
 
 class Baloon extends THREE.Group {
@@ -468,6 +498,7 @@ function handleCollisions() {
 /* UPDATE */
 ////////////
 function update() {
+  const delta = clock.getDelta();
   if (pressed.topCamera) {
     camera = topCamera;
     /// TEMP PLEASE DELETE BEFORE SUBMISSION ///
@@ -512,6 +543,16 @@ function update() {
     camera = mobileCamera;
     pressed.mobileCamera = false;
   }
+  // Continuous movement: compute direction from simultaneous keys
+  const moveVec = new THREE.Vector3(
+    (movementState.right ? 1 : 0) + (movementState.left ? -1 : 0),
+    (movementState.up ? 1 : 0) + (movementState.down ? -1 : 0),
+    (movementState.forward ? 1 : 0) + (movementState.backward ? -1 : 0)
+  );
+
+  if (moveVec.lengthSq() > 0) {
+    drone.moveDirection(moveVec, delta);
+  }
   // Animate drone arms folding/unfolding
   drone.updateArms();
   drone.rotateRotors();
@@ -552,6 +593,7 @@ function init() {
 
   window.addEventListener("resize", onResize);
   window.addEventListener("keydown", onKeyDown);
+  window.addEventListener("keyup", onKeyUp);
 }
 
 /////////////////////
@@ -638,6 +680,55 @@ function onKeyDown(e) {
     // Q - fold/unfold drone arms
     case 81: case 113:
         drone.toggleArmsFold();
+      break;
+
+    // A / D - move drone on X axis (só voa se braços estendidos)
+    case 65: case 97: // A
+      movementState.left = true;
+      break;
+    case 68: case 100: // D
+      movementState.right = true;
+      break;
+    // W / S - move drone on Y axis (continuous)
+    case 87: case 119: // W
+      movementState.up = true;
+      break;
+    case 83: case 115: // S
+      movementState.down = true;
+      break;
+
+    // U / J - move drone on Z axis (continuous)
+    case 85: case 117: // U
+      movementState.forward = true;
+      break;
+    case 74: case 106: // J
+      movementState.backward = true;
+      break;
+  }
+}
+
+///////////////////////
+/* KEY UP CALLBACK */
+///////////////////////
+function onKeyUp(e) {
+  switch (e.keyCode) {
+    case 65: case 97: // A
+      movementState.left = false;
+      break;
+    case 68: case 100: // D
+      movementState.right = false;
+      break;
+    case 87: case 119: // W
+      movementState.up = false;
+      break;
+    case 83: case 115: // S
+      movementState.down = false;
+      break;
+    case 85: case 117: // U
+      movementState.forward = false;
+      break;
+    case 74: case 106: // J
+      movementState.backward = false;
       break;
   }
 }
