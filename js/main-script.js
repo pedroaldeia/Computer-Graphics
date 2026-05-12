@@ -103,6 +103,13 @@ class Drone extends THREE.Group {
     this._addSuporteCamara();
     this._addLens();
     this._addRotorExtension();
+    this._rotors = [];
+
+    // Folding state for rotor extensions (arms)
+    this._foldProgress = 0; // 0 = unfolded, 1 = folded
+    this._targetFold = 0;
+    this._foldScale = 0.65; // how close to center when folded (percentage)
+    this._foldSpeed = 0.08; // per frame progress step
   }
 
   _getBodyX() {
@@ -184,13 +191,19 @@ class Drone extends THREE.Group {
 
     rotorExtensions.forEach((rotorExtension, index) => {
       rotorExtension.rotation.y = index * (Math.PI / 2) + Math.PI/4;
-      rotorExtension.position.set(
+      const pos = new THREE.Vector3(
         this._getBodyX()/2*Math.cos(index * Math.PI / 2 + Math.PI/4),
         0,
         this._getBodyX()/2 *(-Math.sin(index * Math.PI / 2 + Math.PI/4))
       );
+      rotorExtension.position.copy(pos);
+      // store original position for folding/unfolding
+      rotorExtension.userData.originalPosition = pos.clone();
       this.add(rotorExtension);
     });
+
+    // keep reference for later animation
+    this.rotorExtensions = rotorExtensions;
   }
 
   _addGuards(rotorExtensions) {
@@ -220,11 +233,11 @@ class Drone extends THREE.Group {
   }
 
   _addRotors(connections) {
-    const rotors = [0, 1, 2, 3].map(() => new THREE.Mesh(
+    this.rotors = [0, 1, 2, 3].map(() => new THREE.Mesh(
       new THREE.CylinderGeometry(this._getRotorRadius(), this._getRotorRadius(), this._getRotorRadius()/2, 32),
       new THREE.MeshBasicMaterial({ color: 0x444441 })));
 
-    rotors.forEach((rotor, index) => {
+    this.rotors.forEach((rotor, index) => {
       rotor.rotation.x = Math.PI / 2;
       this._addProppellers(rotor);
       rotor.position.set(this._getConnectionX()/2 + this._getRotorRadius()/2, 0, 0);
@@ -247,6 +260,51 @@ class Drone extends THREE.Group {
       rotor.add(proppeller);
     });
   }
+ 
+  // Toggle fold/unfold target for the arms
+  toggleArmsFold() {
+    this._targetFold = this._targetFold === 1 ? 0 : 1;
+  }
+
+  setArmsFolded(folded) {
+    this._targetFold = folded ? 1 : 0;
+  }
+
+  // Animate arms folding/unfolding; call every frame
+  updateArms() {
+    if (!this.rotorExtensions) return;
+    if (this._foldProgress === this._targetFold) return;
+
+    const dir = Math.sign(this._targetFold - this._foldProgress);
+    this._foldProgress += dir * this._foldSpeed;
+    if (dir > 0 && this._foldProgress > this._targetFold) this._foldProgress = this._targetFold;
+    if (dir < 0 && this._foldProgress < this._targetFold) this._foldProgress = this._targetFold;
+
+    const scale = (1 - this._foldProgress * (1 - this._foldScale)); // between 1 and foldScale
+    this.rotorExtensions.forEach((ext) => {
+      const orig = ext.userData.originalPosition;
+      if (orig) {
+        ext.position.copy(orig.clone().multiplyScalar(scale));
+      }
+    });
+  }
+
+  rotateRotors() {
+
+  // Só roda quando estiver totalmente aberto
+  if (this._foldProgress === 0 && this._targetFold === 0) {
+
+    this.rotors.forEach((rotor, index) => {
+
+      // velocidade de rotação
+      const speed = 0.4;
+
+      // rotação no eixo Y local
+      rotor.rotation.y += speed;
+
+    });
+  }
+}
 }
 
 class Baloon extends THREE.Group {
@@ -454,6 +512,9 @@ function update() {
     camera = mobileCamera;
     pressed.mobileCamera = false;
   }
+  // Animate drone arms folding/unfolding
+  drone.updateArms();
+  drone.rotateRotors();
 }
 
 /////////////
@@ -573,6 +634,10 @@ function onKeyDown(e) {
         if (node instanceof THREE.Mesh) node.material.wireframe = wireframeActive;
       });
       toggleHUDKey('key-7', wireframeActive);
+      break;
+    // Q - fold/unfold drone arms
+    case 81: case 113:
+        drone.toggleArmsFold();
       break;
   }
 }
