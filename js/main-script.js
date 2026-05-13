@@ -80,6 +80,8 @@ document.body.appendChild( stats.dom );
 stats.dom.style.transform = 'scale(1.5)';
 stats.dom.style.transformOrigin = 'top left';
 
+let canLandDroneDistance = 10;
+
 ///////////////////////
 /* CLASS DEFINITIONS */
 ///////////////////////
@@ -122,15 +124,14 @@ class SmartWatch extends THREE.Group {
 class Drone extends THREE.Group {
   constructor() {
     super();
-
+    
     this._addBaseDescolagem();
     this._addBotaoDescolagem();
     this._addSuporteCamara();
     this._addLens();
     this._addRotorExtension();
-    this._rotors = [];
-    this._rotors = [];
-    this._rotors = [];
+    // set initial position from getStartPos (returns a Vector3)
+    this.position.copy(this.getStartPos());
     this._moveSpeed = 100; // units per second (tweakable)
     this._rotationSpeed = Math.PI; // radians per second (tweakable)
     this._collisionRadius = 20; // approximate collision sphere radius
@@ -140,9 +141,19 @@ class Drone extends THREE.Group {
 
     // Folding state for rotor extensions (arms)
     this._foldProgress = 0; // 0 = unfolded, 1 = folded
-    this._targetFold = 0;
+    this._targetFold = 1; // 0 = not folding, 1 = folding
     this._foldScale = 0.65; // how close to center when folded (percentage)
     this._foldSpeed = 0.08; // per frame progress step
+  }
+
+  getStartPos() {
+    // match the placed resting position used in createScene()
+    return new THREE.Vector3(0, this._getLandingHeight(), 0);
+  }
+
+  _getLandingHeight() {
+    // The drone base is 4 units tall; y=3 makes its bottom sit on the watch top.
+    return 3;
   }
 
   _getBodyX() {
@@ -172,10 +183,14 @@ class Drone extends THREE.Group {
   _getProppellerWidth() {
     return this._getProppellerLength()/6;
   }
+
+  _getBaseDescolagemY() {
+    return 4;
+  }
  
   _addBaseDescolagem() {
     const base = new THREE.Mesh(
-      new THREE.BoxGeometry(20, 4, 20),
+      new THREE.BoxGeometry(this._getBaseDescolagemY()*5, this._getBaseDescolagemY(), this._getBaseDescolagemY()*5),
       new THREE.MeshBasicMaterial({ color: 0xF1EFE8 }));
     this.add(base);
   }
@@ -205,7 +220,7 @@ class Drone extends THREE.Group {
 
     this.mobileCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
     this.mobileCamera.position.set(0, 6, -8);
-    this.mobileCamera.lookAt(0, 6, 1000);
+    this.mobileCamera.rotateY(Math.PI);
     this.add(this.mobileCamera);
     mobileCamera = this.mobileCamera;
 
@@ -371,6 +386,29 @@ class Drone extends THREE.Group {
     // clamp pitch between limits
     this.rotation.x = Math.min(Math.max(newPitch, this._pitchLimitMin), this._pitchLimitMax);
   }
+
+  setDronePos(x, y, z) {
+    // set the object's local position
+    this.position.set(x, y, z);
+  }
+
+  landDrone() {
+    this.position.copy(this.getStartPos());
+    this.rotation.set(0, 0, 0);
+  }
+
+  handleArmsFold() {
+    if (this._targetFold === 1) {
+      // arms are folded, so unfold them
+      this._targetFold = 0;
+    } else if (canLandDrone()) {
+      // arms are extended and drone is close to watch, so land and fold
+      this.landDrone();
+      this._targetFold = 1;
+    }
+    
+    toggleHUDKey('key-q', this._targetFold === 1);
+  }
 }
 
 class Baloon extends THREE.Group {
@@ -508,6 +546,15 @@ function setupCameras() {
     cameraHelpers.forEach((helper) => {
       scene.add(helper);
     });
+}
+
+function canLandDrone() {
+  const watchPos = new THREE.Vector3();
+  const dronePos = new THREE.Vector3();
+  smartWatch.getWorldPosition(watchPos);
+  drone.getWorldPosition(dronePos);
+  const dist = watchPos.distanceTo(dronePos);
+  return dist < canLandDroneDistance;
 }
 
 /////////////////////
@@ -825,8 +872,7 @@ function onKeyDown(e) {
       break;
     // Q - fold/unfold drone arms
     case 81: case 113:
-        drone.toggleArmsFold();
-        toggleHUDKey('key-q', drone._targetFold === 1);
+        drone.handleArmsFold();
       break;
 
     // A / D - move drone on X axis (só voa se braços estendidos)
