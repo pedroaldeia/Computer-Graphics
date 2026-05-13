@@ -28,6 +28,8 @@ let renderer, scene;
 let camera;
 
 let smartWatch, drone, baloon;
+// Array to track balloons for collision checks
+let balloons = [];
 
 // Helpers
 let cameraHelpers = [];
@@ -128,6 +130,7 @@ class Drone extends THREE.Group {
     this._rotors = [];
     this._moveSpeed = 100; // units per second (tweakable)
     this._rotationSpeed = Math.PI; // radians per second (tweakable)
+    this._collisionRadius = 20; // approximate collision sphere radius
     this._pitchSpeed = Math.PI / 2; // radians per second (tweakable)
     this._pitchLimitMin = -Math.PI / 6; // -30 degrees
     this._pitchLimitMax = Math.PI / 6;  // +30 degrees
@@ -374,6 +377,7 @@ class Baloon extends THREE.Group {
     this._addBody();
     this._addNode();
     this._addStrip();
+    this._collisionRadius = 7; // matches SphereGeometry radius in _addBody()
   }
 
   _addBody() {
@@ -417,6 +421,7 @@ function addRandomBalloons() {
 
     balloon.position.set(randomX, randomY, randomZ);
     scene.add(balloon);
+    balloons.push(balloon);
   }
 }
 
@@ -514,15 +519,52 @@ function setupCameras() {
 /* CHECK COLLISIONS */
 //////////////////////
 function checkCollisions() {
-    //TODO
+    if (!drone || balloons.length === 0) return;
+
+    const dronePos = new THREE.Vector3();
+    drone.getWorldPosition(dronePos);
+    const droneRadius = drone._collisionRadius || 12;
+
+    const collided = [];
+
+    for (let i = balloons.length - 1; i >= 0; i--) {
+      const b = balloons[i];
+      const bPos = new THREE.Vector3();
+      b.getWorldPosition(bPos);
+      const bRadius = b._collisionRadius || 7;
+      const rSum = droneRadius + bRadius;
+      if (dronePos.distanceToSquared(bPos) <= rSum * rSum) {
+        collided.push(b);
+      }
     }
+
+    if (collided.length > 0) handleCollisions(collided);
+}
 
 ///////////////////////
 /* HANDLE COLLISIONS */
 ///////////////////////
-function handleCollisions() {
-    //TODO
-    }
+
+
+// Actual handler that receives the list of collided balloon objects
+function handleCollisions(collidedArray) {
+  collidedArray.forEach((b) => {
+    // remove any axes helper entries associated with this balloon
+    b.traverse((node) => {
+      if (node instanceof THREE.AxesHelper) {
+        const idx = axesHelpers.indexOf(node);
+        if (idx !== -1) axesHelpers.splice(idx, 1);
+      }
+    });
+
+    // remove from scene
+    if (b.parent) b.parent.remove(b);
+
+    // remove from balloons array
+    const i = balloons.indexOf(b);
+    if (i !== -1) balloons.splice(i, 1);
+  });
+}
 
 ////////////
 /* UPDATE */
@@ -596,6 +638,8 @@ function update() {
   // Animate drone arms folding/unfolding
   drone.updateArms();
   drone.rotateRotors();
+  // Check collisions after movement and rotation
+  checkCollisions();
 }
 
 /////////////
