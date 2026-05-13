@@ -529,6 +529,8 @@ function checkCollisions() {
 
     for (let i = balloons.length - 1; i >= 0; i--) {
       const b = balloons[i];
+      // skip balloons already popping
+      if (b.userData && b.userData.popping) continue;
       const bPos = new THREE.Vector3();
       b.getWorldPosition(bPos);
       const bRadius = b._collisionRadius || 7;
@@ -546,24 +548,67 @@ function checkCollisions() {
 ///////////////////////
 
 
-// Actual handler that receives the list of collided balloon objects
+
 function handleCollisions(collidedArray) {
   collidedArray.forEach((b) => {
-    // remove any axes helper entries associated with this balloon
+    if (!b || (b.userData && b.userData.popping)) return;
+    b.userData = b.userData || {};
+    b.userData.popping = true;
+    b.userData.popProgress = 0;
+    b.userData.popDuration = 0.8; // seconds
+    // store original material opacities and enable transparency
     b.traverse((node) => {
-      if (node instanceof THREE.AxesHelper) {
-        const idx = axesHelpers.indexOf(node);
-        if (idx !== -1) axesHelpers.splice(idx, 1);
+      if (node.isMesh && node.material) {
+        node.userData = node.userData || {};
+        node.userData.origOpacity = node.material.opacity != null ? node.material.opacity : 1;
+        node.material.transparent = true;
       }
     });
-
-    // remove from scene
-    if (b.parent) b.parent.remove(b);
-
-    // remove from balloons array
-    const i = balloons.indexOf(b);
-    if (i !== -1) balloons.splice(i, 1);
+    // prevent further collision checks for this balloon
+    b.userData.ignoreCollision = true;
   });
+}
+
+// Animate popping balloons (fade + shrink) and remove when done
+function updatePoppingBalloons(delta) {
+  for (let i = balloons.length - 1; i >= 0; i--) {
+    const b = balloons[i];
+    if (!b.userData || !b.userData.popping) continue;
+    b.userData.popProgress += delta;
+    const dur = b.userData.popDuration || 0.8;
+    const t = Math.min(1, b.userData.popProgress / dur);
+    // fade meshes and shrink group
+    b.traverse((node) => {
+      if (node.isMesh && node.material) {
+        const orig = node.userData && node.userData.origOpacity != null ? node.userData.origOpacity : 1;
+        node.material.opacity = (1 - t) * orig;
+      }
+    });
+    const s = Math.max(0, 1 - t);
+    b.scale.set(s, s, s);
+    if (t >= 1) {
+      // cleanup axes helpers references
+      b.traverse((node) => {
+        if (node instanceof THREE.AxesHelper) {
+          const idx = axesHelpers.indexOf(node);
+          if (idx !== -1) axesHelpers.splice(idx, 1);
+        }
+      });
+      // remove from scene and array
+      if (b.parent) b.parent.remove(b);
+      balloons.splice(i, 1);
+      // dispose geometries/materials to free memory
+      b.traverse((node) => {
+        if (node.isMesh) {
+          if (node.geometry && node.geometry.dispose) node.geometry.dispose();
+          if (node.material) {
+            if (Array.isArray(node.material)) node.material.forEach(m => m.dispose && m.dispose());
+            else node.material.dispose && node.material.dispose();
+          }
+        }
+      });
+    }
+  }
 }
 
 ////////////
@@ -640,6 +685,8 @@ function update() {
   drone.rotateRotors();
   // Check collisions after movement and rotation
   checkCollisions();
+  // Animate any balloons that are popping
+  updatePoppingBalloons(delta);
 }
 
 /////////////
