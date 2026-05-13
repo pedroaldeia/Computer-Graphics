@@ -61,6 +61,9 @@ let movementState = {
   backward: false, // J
 };
 
+// When true, keyboard input is ignored (used while balloons are popping)
+let inputLocked = false;
+
 // Clock for frame delta time
 const clock = new THREE.Clock();
 // Rotation input state (I/K + O/L pitch)
@@ -567,6 +570,13 @@ function handleCollisions(collidedArray) {
     // prevent further collision checks for this balloon
     b.userData.ignoreCollision = true;
   });
+  // Lock input while any balloons are popping and clear any existing movement/rotation
+  inputLocked = true;
+  // clear movement and rotation states to stop the drone immediately
+  movementState.left = movementState.right = movementState.up = movementState.down = movementState.forward = movementState.backward = false;
+  rotationState.yawLeft = rotationState.yawRight = rotationState.pitchUp = rotationState.pitchDown = false;
+  // clear camera pressed flags too
+  for (const k in pressed) if (Object.prototype.hasOwnProperty.call(pressed, k)) pressed[k] = false;
 }
 
 // Animate popping balloons (fade + shrink) and remove when done
@@ -609,6 +619,10 @@ function updatePoppingBalloons(delta) {
       });
     }
   }
+
+  // If no balloons are popping anymore, unlock input
+  const anyPopping = balloons.some(b => b.userData && b.userData.popping);
+  if (!anyPopping) inputLocked = false;
 }
 
 ////////////
@@ -759,6 +773,7 @@ function onResize() {
 /* KEY DOWN CALLBACK */
 ///////////////////////
 function onKeyDown(e) {
+  if (inputLocked) return;
   updateHUD(e.keyCode, true);
   switch (e.keyCode) {
     // Camera controls
@@ -867,6 +882,8 @@ function onKeyDown(e) {
 /* KEY UP CALLBACK */
 ///////////////////////
 function onKeyUp(e) {
+  if (inputLocked) return;
+
   switch (e.keyCode) {
     case 65: case 97: // A
       toggleHUDKey('key-a', false);
