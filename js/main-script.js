@@ -764,42 +764,53 @@ function onKeyDown(e) {
     // Q - fold/unfold drone arms
     case 81: case 113:
         drone.toggleArmsFold();
+        toggleHUDKey('key-q', drone._targetFold === 1);
       break;
 
     // A / D - move drone on X axis (só voa se braços estendidos)
     case 65: case 97: // A
+      toggleHUDKey('key-a', true);
       movementState.left = true;
       break;
     case 68: case 100: // D
+      toggleHUDKey('key-d', true);
       movementState.right = true;
       break;
     // W / S - move drone on Y axis (continuous)
     case 87: case 119: // W
+      toggleHUDKey('key-w', true);
       movementState.up = true;
       break;
     case 83: case 115: // S
+      toggleHUDKey('key-s', true);
       movementState.down = true;
       break;
 
     // U / J - move drone on Z axis (continuous)
     case 85: case 117: // U
+      toggleHUDKey('key-u', true);
       movementState.forward = true;
       break;
     case 74: case 106: // J
+      toggleHUDKey('key-j', true);
       movementState.backward = true;
       break;
     // I / K - yaw rotation around Y axis
     case 73: case 105: // I
+      toggleHUDKey('key-i', true);
       rotationState.yawLeft = true;
       break;
     case 75: case 107: // K
+      toggleHUDKey('key-k', true);
       rotationState.yawRight = true;
       break;
     // O / L - pitch rotation around X axis (limited)
     case 79: case 111: // O
+      toggleHUDKey('key-o', true);
       rotationState.pitchUp = true;
       break;
     case 76: case 108: // L
+      toggleHUDKey('key-l', true);
       rotationState.pitchDown = true;
       break;
   }
@@ -811,33 +822,43 @@ function onKeyDown(e) {
 function onKeyUp(e) {
   switch (e.keyCode) {
     case 65: case 97: // A
+      toggleHUDKey('key-a', false);
       movementState.left = false;
       break;
     case 68: case 100: // D
+      toggleHUDKey('key-d', false);
       movementState.right = false;
       break;
     case 87: case 119: // W
+      toggleHUDKey('key-w', false);
       movementState.up = false;
       break;
     case 83: case 115: // S
+      toggleHUDKey('key-s', false);
       movementState.down = false;
       break;
     case 85: case 117: // U
+      toggleHUDKey('key-u', false);
       movementState.forward = false;
       break;
     case 74: case 106: // J
+      toggleHUDKey('key-j', false);
       movementState.backward = false;
       break;
     case 73: case 105: // I
+      toggleHUDKey('key-i', false);
       rotationState.yawLeft = false;
       break;
     case 75: case 107: // K
+      toggleHUDKey('key-k', false);
       rotationState.yawRight = false;
       break;
     case 79: case 111: // O
+      toggleHUDKey('key-o', false);
       rotationState.pitchUp = false;
       break;
     case 76: case 108: // L
+      toggleHUDKey('key-l', false);
       rotationState.pitchDown = false;
       break;
   }
