@@ -17,7 +17,15 @@
   </head>
 
   <body>
-    <div id="hud">
+    <button id="info-hud-toggle" class="hud-toggle hud-toggle-info" type="button">Show Info HUD</button>
+    <button id="params-hud-toggle" class="hud-toggle hud-toggle-params" type="button">Show Params HUD</button>
+
+    <div id="info-hud" class="hud-panel hud-info-panel">
+      <div class="hud-header">
+        <div class="hud-title">Drone Info</div>
+        <button id="info-hud-hide-btn" class="hud-hide-btn" type="button">Hide</button>
+      </div>
+
       <div class="hud-section">
         <div class="key-item" id="key-1">1: Top View</div>
         <div class="key-item" id="key-2">2: Lateral View</div>
@@ -28,7 +36,9 @@
         <div class="key-item" id="key-7">7: Wireframe</div>
         <div class="key-item" id="key-h">H: Helpers</div>
       </div>
+
       <hr class="hud-divider"/>
+
       <div class="hud-section">
         <div class="key-item" id="key-q">Q: Fold/Unfold Arms</div>
         <div class="key-item" id="key-w">W: Ascend</div>
@@ -44,18 +54,149 @@
       </div>
     </div>
 
+    <div id="params-hud" class="hud-panel hud-params-panel">
+      <div class="hud-header">
+        <div class="hud-title">Drone Parameters</div>
+        <button id="params-hud-hide-btn" class="hud-hide-btn" type="button">Hide</button>
+      </div>
+
+      <div class="hud-section hud-position-section">
+        <div class="hud-subtitle">Drone Position</div>
+
+        <label class="slider-control" for="drone-x-slider">
+          <span>X: <strong id="drone-x-value">0</strong></span>
+          <input id="drone-x-slider" type="range" min="-100" max="100" step="1" value="0" />
+        </label>
+
+        <label class="slider-control" for="drone-y-slider">
+          <span>Y: <strong id="drone-y-value">3</strong></span>
+          <input id="drone-y-slider" type="range" min="0" max="100" step="1" value="3" />
+        </label>
+
+        <label class="slider-control" for="drone-z-slider">
+          <span>Z: <strong id="drone-z-value">0</strong></span>
+          <input id="drone-z-slider" type="range" min="-100" max="100" step="1" value="0" />
+        </label>
+      </div>
+
+      <hr class="hud-divider"/>
+
+      <div class="hud-section hud-params-section">
+        <div class="hud-subtitle">Drone State</div>
+
+        <label class="switch-control" for="target-fold-switch">
+          <span>Target Fold</span>
+          <input id="target-fold-switch" type="checkbox" />
+        </label>
+
+        <label class="slider-control" for="yaw-slider">
+          <span>Yaw: <strong id="yaw-value">0°</strong></span>
+          <input id="yaw-slider" type="range" min="-180" max="180" step="1" value="0" />
+        </label>
+
+        <label class="slider-control" for="pitch-slider">
+          <span>Pitch: <strong id="pitch-value">0°</strong></span>
+          <input id="pitch-slider" type="range" min="-30" max="30" step="1" value="0" />
+        </label>
+
+        <label class="slider-control" for="drone-speed-slider">
+          <span>Drone Speed: <strong id="drone-speed-value">100</strong></span>
+          <input id="drone-speed-slider" type="range" min="10" max="200" step="1" value="100" />
+        </label>
+
+        <label class="slider-control" for="rotor-speed-slider">
+          <span>Rotor Speed: <strong id="rotor-speed-value">0.4</strong></span>
+          <input id="rotor-speed-slider" type="range" min="0.05" max="2" step="0.05" value="0.4" />
+        </label>
+      </div>
+    </div>
+
     <style>
       #hud {
-        position: absolute;
-        top: 20px;
-        right: 20px;
+        position: fixed;
+      }
+      .hud-panel {
+        position: fixed;
         background: rgba(0, 0, 0, 0.6);
         color: white;
         padding: 15px;
         border-radius: 8px;
         font-family: sans-serif;
-        pointer-events: none;
-        z-index: 100;
+        pointer-events: auto;
+        z-index: 1000;
+        width: 300px;
+        backdrop-filter: blur(4px);
+      }
+      .hud-info-panel {
+        top: 138px;
+        right: 20px;
+      }
+      .hud-params-panel {
+        top: 138px;
+        left: 20px;
+      }
+      .hud-panel.hidden {
+        display: none;
+      }
+      .hud-toggle {
+        position: fixed;
+        z-index: 1001;
+        background: rgba(0, 0, 0, 0.65);
+        color: white;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-family: sans-serif;
+        cursor: pointer;
+      }
+      .hud-toggle-info {
+        top: 92px;
+        right: 20px;
+      }
+      .hud-toggle-params {
+        top: 92px;
+        left: 20px;
+      }
+      .hud-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+      .hud-title,
+      .hud-subtitle {
+        font-weight: bold;
+        letter-spacing: 0.02em;
+      }
+      .hud-hide-btn {
+        background: rgba(255, 255, 255, 0.12);
+        color: white;
+        border: 1px solid rgba(255,255,255,0.18);
+        border-radius: 4px;
+        padding: 4px 8px;
+        cursor: pointer;
+      }
+      .hud-position-section {
+        gap: 10px;
+      }
+      .hud-params-section {
+        gap: 10px;
+      }
+      .switch-control {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 0.92rem;
+      }
+      .slider-control {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 0.92rem;
+      }
+      .slider-control input[type="range"] {
+        width: 100%;
       }
       .active {
         background: #44ff44;

@@ -36,10 +36,36 @@ let cameraHelpers = [];
 let axesHelpers = [];
 let helpersVisible = true;
 let wireframeActive = false;
+let infoHudVisible = true;
+let paramsHudVisible = true;
 
 /// TEMP PLEASE DELETE BEFORE SUBMISSION ///
 let controls;
 ////////////
+
+let hudElements = {
+  infoPanel: null,
+  paramsPanel: null,
+  infoToggleButton: null,
+  paramsToggleButton: null,
+  infoHideButton: null,
+  paramsHideButton: null,
+  targetFoldSwitch: null,
+  yawSlider: null,
+  pitchSlider: null,
+  droneSpeedSlider: null,
+  rotorSpeedSlider: null,
+  yawValue: null,
+  pitchValue: null,
+  droneSpeedValue: null,
+  rotorSpeedValue: null,
+  xSlider: null,
+  ySlider: null,
+  zSlider: null,
+  xValue: null,
+  yValue: null,
+  zValue: null,
+};
 
 // Flags
 let pressed = {
@@ -138,6 +164,7 @@ class Drone extends THREE.Group {
     this._pitchSpeed = Math.PI / 2; // radians per second (tweakable)
     this._pitchLimitMin = -Math.PI / 6; // -30 degrees
     this._pitchLimitMax = Math.PI / 6;  // +30 degrees
+    this._rotorSpeed = 0.4; // radians per frame-ish, used in rotateRotors()
 
     // Folding state for rotor extensions (arms)
     this._foldProgress = 0; // 0 = unfolded, 1 = folded
@@ -344,11 +371,8 @@ class Drone extends THREE.Group {
 
     this.rotors.forEach((rotor, index) => {
 
-      // velocidade de rotação
-      const speed = 0.4;
-
       // rotação no eixo Y local
-      rotor.rotation.y += speed;
+      rotor.rotation.y += this._rotorSpeed;
 
     });
   }
@@ -408,6 +432,27 @@ class Drone extends THREE.Group {
     }
     
     toggleHUDKey('key-q', this._targetFold === 1);
+  }
+
+  setTargetFold(folded) {
+    this._targetFold = folded ? 1 : 0;
+  }
+
+  setYawDegrees(degrees) {
+    this.rotation.y = THREE.MathUtils.degToRad(degrees);
+  }
+
+  setPitchDegrees(degrees) {
+    const radians = THREE.MathUtils.degToRad(degrees);
+    this.rotation.x = Math.min(Math.max(radians, this._pitchLimitMin), this._pitchLimitMax);
+  }
+
+  setMoveSpeed(speed) {
+    this._moveSpeed = speed;
+  }
+
+  setRotorSpeed(speed) {
+    this._rotorSpeed = speed;
   }
 }
 
@@ -748,6 +793,8 @@ function update() {
   checkCollisions();
   // Animate any balloons that are popping
   updatePoppingBalloons(delta);
+  syncDronePositionHUD();
+  syncParamsHUD();
 }
 
 /////////////
@@ -763,11 +810,17 @@ function render() {
 function init() {
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(WIDTH, HEIGHT);
+  renderer.domElement.style.position = 'fixed';
+  renderer.domElement.style.top = '0';
+  renderer.domElement.style.left = '0';
+  renderer.domElement.style.zIndex = '0';
   document.body.appendChild(renderer.domElement);
 
   createScene();
   setupCameras();
   initializeHUD();
+  initializeInfoHUD();
+  initializeParamsHUD();
 
   //////////////////////////////
   // TEMP PLEASE DELETE BEFORE SUBMISSION
@@ -978,6 +1031,175 @@ function initializeHUD() {
   toggleHUDKey('key-5', true);
   toggleHUDKey('key-h', helpersVisible);
   toggleHUDKey('key-7', false);
+}
+
+function initializeInfoHUD() {
+  hudElements.infoPanel = document.getElementById('info-hud');
+  hudElements.infoToggleButton = document.getElementById('info-hud-toggle');
+  hudElements.infoHideButton = document.getElementById('info-hud-hide-btn');
+
+  if (hudElements.infoToggleButton) hudElements.infoToggleButton.addEventListener('click', toggleInfoHUDVisibility);
+  if (hudElements.infoHideButton) hudElements.infoHideButton.addEventListener('click', toggleInfoHUDVisibility);
+
+  updateInfoHUDVisibility();
+}
+
+function initializeParamsHUD() {
+  hudElements.paramsPanel = document.getElementById('params-hud');
+  hudElements.paramsToggleButton = document.getElementById('params-hud-toggle');
+  hudElements.paramsHideButton = document.getElementById('params-hud-hide-btn');
+  hudElements.targetFoldSwitch = document.getElementById('target-fold-switch');
+  hudElements.yawSlider = document.getElementById('yaw-slider');
+  hudElements.pitchSlider = document.getElementById('pitch-slider');
+  hudElements.droneSpeedSlider = document.getElementById('drone-speed-slider');
+  hudElements.rotorSpeedSlider = document.getElementById('rotor-speed-slider');
+  hudElements.yawValue = document.getElementById('yaw-value');
+  hudElements.pitchValue = document.getElementById('pitch-value');
+  hudElements.droneSpeedValue = document.getElementById('drone-speed-value');
+  hudElements.rotorSpeedValue = document.getElementById('rotor-speed-value');
+  hudElements.xSlider = document.getElementById('drone-x-slider');
+  hudElements.ySlider = document.getElementById('drone-y-slider');
+  hudElements.zSlider = document.getElementById('drone-z-slider');
+  hudElements.xValue = document.getElementById('drone-x-value');
+  hudElements.yValue = document.getElementById('drone-y-value');
+  hudElements.zValue = document.getElementById('drone-z-value');
+
+  const applyPositionFromSliders = () => {
+    if (!drone || !hudElements.xSlider || !hudElements.ySlider || !hudElements.zSlider) return;
+
+    const x = Number(hudElements.xSlider.value);
+    const y = Number(hudElements.ySlider.value);
+    const z = Number(hudElements.zSlider.value);
+
+    drone.setDronePos(x, y, z);
+    syncDronePositionHUD();
+  };
+
+  if (hudElements.xSlider) hudElements.xSlider.addEventListener('input', applyPositionFromSliders);
+  if (hudElements.ySlider) hudElements.ySlider.addEventListener('input', applyPositionFromSliders);
+  if (hudElements.zSlider) hudElements.zSlider.addEventListener('input', applyPositionFromSliders);
+
+  if (hudElements.targetFoldSwitch) {
+    hudElements.targetFoldSwitch.addEventListener('change', () => {
+      if (!drone) return;
+      drone.setTargetFold(hudElements.targetFoldSwitch.checked);
+      syncParamsHUD();
+    });
+  }
+
+  if (hudElements.yawSlider) {
+    hudElements.yawSlider.addEventListener('input', () => {
+      if (!drone) return;
+      drone.setYawDegrees(Number(hudElements.yawSlider.value));
+      syncParamsHUD();
+    });
+  }
+
+  if (hudElements.pitchSlider) {
+    hudElements.pitchSlider.addEventListener('input', () => {
+      if (!drone) return;
+      drone.setPitchDegrees(Number(hudElements.pitchSlider.value));
+      syncParamsHUD();
+    });
+  }
+
+  if (hudElements.droneSpeedSlider) {
+    hudElements.droneSpeedSlider.addEventListener('input', () => {
+      if (!drone) return;
+      drone.setMoveSpeed(Number(hudElements.droneSpeedSlider.value));
+      syncParamsHUD();
+    });
+  }
+
+  if (hudElements.rotorSpeedSlider) {
+    hudElements.rotorSpeedSlider.addEventListener('input', () => {
+      if (!drone) return;
+      drone.setRotorSpeed(Number(hudElements.rotorSpeedSlider.value));
+      syncParamsHUD();
+    });
+  }
+
+  if (hudElements.paramsToggleButton) hudElements.paramsToggleButton.addEventListener('click', toggleParamsHUDVisibility);
+  if (hudElements.paramsHideButton) hudElements.paramsHideButton.addEventListener('click', toggleParamsHUDVisibility);
+
+  syncDronePositionHUD();
+  syncParamsHUD();
+  updateParamsHUDVisibility();
+}
+
+function syncDronePositionHUD() {
+  if (!drone) return;
+
+  const x = Math.round(drone.position.x);
+  const y = Math.round(drone.position.y);
+  const z = Math.round(drone.position.z);
+
+  if (hudElements.xSlider) hudElements.xSlider.value = x;
+  if (hudElements.ySlider) hudElements.ySlider.value = y;
+  if (hudElements.zSlider) hudElements.zSlider.value = z;
+
+  if (hudElements.xValue) hudElements.xValue.textContent = x;
+  if (hudElements.yValue) hudElements.yValue.textContent = y;
+  if (hudElements.zValue) hudElements.zValue.textContent = z;
+}
+
+function syncParamsHUD() {
+  if (!drone) return;
+
+  if (hudElements.targetFoldSwitch) {
+    hudElements.targetFoldSwitch.checked = drone._targetFold === 1;
+  }
+
+  const yawDeg = Math.round(THREE.MathUtils.radToDeg(drone.rotation.y));
+  const pitchDeg = Math.round(THREE.MathUtils.radToDeg(drone.rotation.x));
+
+  if (hudElements.yawSlider) hudElements.yawSlider.value = yawDeg;
+  if (hudElements.pitchSlider) hudElements.pitchSlider.value = pitchDeg;
+  if (hudElements.droneSpeedSlider) hudElements.droneSpeedSlider.value = drone._moveSpeed;
+  if (hudElements.rotorSpeedSlider) hudElements.rotorSpeedSlider.value = drone._rotorSpeed;
+
+  if (hudElements.yawValue) hudElements.yawValue.textContent = `${yawDeg}°`;
+  if (hudElements.pitchValue) hudElements.pitchValue.textContent = `${pitchDeg}°`;
+  if (hudElements.droneSpeedValue) hudElements.droneSpeedValue.textContent = drone._moveSpeed;
+  if (hudElements.rotorSpeedValue) hudElements.rotorSpeedValue.textContent = Number(drone._rotorSpeed).toFixed(2);
+}
+
+function updateInfoHUDVisibility() {
+  if (!hudElements.infoPanel) return;
+
+  hudElements.infoPanel.classList.toggle('hidden', !infoHudVisible);
+
+  if (hudElements.infoToggleButton) {
+    hudElements.infoToggleButton.hidden = infoHudVisible;
+    hudElements.infoToggleButton.textContent = infoHudVisible ? 'Hide Info HUD' : 'Show Info HUD';
+  }
+  if (hudElements.infoHideButton) {
+    hudElements.infoHideButton.textContent = infoHudVisible ? 'Hide' : 'Show';
+  }
+}
+
+function toggleInfoHUDVisibility() {
+  infoHudVisible = !infoHudVisible;
+  updateInfoHUDVisibility();
+}
+
+function updateParamsHUDVisibility() {
+  if (!hudElements.paramsPanel) return;
+
+  hudElements.paramsPanel.classList.toggle('hidden', !paramsHudVisible);
+
+  if (hudElements.paramsToggleButton) {
+    hudElements.paramsToggleButton.hidden = paramsHudVisible;
+    hudElements.paramsToggleButton.textContent = paramsHudVisible ? 'Hide Params HUD' : 'Show Params HUD';
+  }
+  if (hudElements.paramsHideButton) {
+    hudElements.paramsHideButton.textContent = paramsHudVisible ? 'Hide' : 'Show';
+  }
+}
+
+function toggleParamsHUDVisibility() {
+  paramsHudVisible = !paramsHudVisible;
+  updateParamsHUDVisibility();
 }
 
 function updateHUD(keyCode, isPressed) {
