@@ -101,7 +101,7 @@ class SmartWatch extends THREE.Group {
     loader.load('./scene.gltf', (gltf) => {
       const bracelet = gltf.scene;
       bracelet.name = "bracelet";
-      bracelet.position.set(0, -3, 0);
+      bracelet.position.set(0, -6.4, 0);
       bracelet.scale.set(0.45, 0.45, 0.45);
       bracelet.traverse((node) => {
       if (node.isMesh) {
@@ -206,7 +206,7 @@ class Drone extends THREE.Group {
     this.mobileCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
     this.mobileCamera.position.set(0, 6, -8);
     this.mobileCamera.lookAt(0, 6, 1000);
-    scene.add(this.mobileCamera);
+    this.add(this.mobileCamera);
     mobileCamera = this.mobileCamera;
 
     const mobileHelper = new THREE.CameraHelper(this.mobileCamera);
