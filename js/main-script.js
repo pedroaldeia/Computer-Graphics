@@ -247,6 +247,7 @@ class Drone extends THREE.Group {
 
     this.mobileCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
     this.mobileCamera.position.set(0, 5, -8);
+    this.mobileCamera.lookAt(0, 0, 1000);
     this.mobileCamera.rotateY(Math.PI);
     this.add(this.mobileCamera);
     mobileCamera = this.mobileCamera;
