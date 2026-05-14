@@ -106,7 +106,8 @@ document.body.appendChild( stats.dom );
 stats.dom.style.transform = 'scale(1.5)';
 stats.dom.style.transformOrigin = 'top left';
 
-let canLandDroneDistance = 10;
+let droneScale = 1;
+let canLandDroneDistance = droneScale*10;
 
 ///////////////////////
 /* CLASS DEFINITIONS */
@@ -150,17 +151,69 @@ class SmartWatch extends THREE.Group {
 class Drone extends THREE.Group {
   constructor() {
     super();
+
+    // Geometry constants and grouped dimensions
+    this._bodyY = droneScale*4;
+    this._landingHeight = this._bodyY * 3 / 4;
+    this._bodyX = this._bodyY * 5;
+    this._bodyZ = this._bodyX;
+
+    // Take-Off Button: Depends on Body
+    this._takeoffButtonX = this._bodyY;
+    this._takeoffButtonY = this._bodyY * 3 / 8;
+    this._takeoffButtonZ = this._bodyY;
+
+    // Camera Support: Depends on Body
+    this._cameraSupportX = this._bodyY;
+    this._cameraSupportY = this._bodyY / 4;
+    this._cameraSupportZ = this._bodyY;
+
+    // Lens: Depends on Body
+    this._lensRadiusTop = this._bodyY * 3 / 8;
+    this._lensRadiusBottom = this._bodyY * 3 / 8;
+    this._lensHeight = this._bodyY * 3 / 40;
+    this._lensRadialSegments = this._bodyY * 8;
+    
+    // Extension: Depends on body
+    this._extensionX = this._bodyY * 15 / 4;
+    this._extensionY = this._bodyY / 8;
+    this._extensionZ = this._bodyY;
+    
+    // Guard Radius: depend on extension X
+    this._guardRadius = this._extensionX / 3;
+    this._guardTubeRadius = this._guardRadius / 10;
+    this._guardRadialSegments = 32;
+    this._guardTubularSegments = 100;
+
+    // 
+    this._connectionX = this._guardRadius;
+    this._connectionY = this._connectionX / 10;
+    this._connectionZ = this._connectionY;
+
+    // Rotors: depend on guardRadius
+    this._rotorRadius = this._guardRadius / 6;
+    this._rotorHeight = this._rotorRadius / 2;
+    this._rotorRadialSegments = 32;
+
+    // Proppelers: depend on guardRadius
+    this._proppellerLength = this._guardRadius * 2 / 3;
+    this._proppellerWidth = this._proppellerLength / 6;
+    this._proppellerHeight = this._proppellerLength / 20;
+
+    // approximate collision sphere radius
+    // depends on guard radius
+    this._collisionRadius = this._guardRadius; 
     
     this._addBaseDescolagem();
     this._addBotaoDescolagem();
     this._addSuporteCamara();
     this._addLens();
     this._addRotorExtension();
+    
     // set initial position from getStartPos (returns a Vector3)
     this.position.copy(this.getStartPos());
     this._moveSpeed = 100; // units per second (tweakable)
     this._rotationSpeed = Math.PI; // radians per second (tweakable)
-    this._collisionRadius = 20; // approximate collision sphere radius
     this._pitchSpeed = Math.PI / 2; // radians per second (tweakable)
     this._pitchLimitMin = -Math.PI / 6; // -30 degrees
     this._pitchLimitMax = Math.PI / 6;  // +30 degrees
@@ -175,56 +228,19 @@ class Drone extends THREE.Group {
 
   getStartPos() {
     // match the placed resting position used in createScene()
-    return new THREE.Vector3(0, this._getLandingHeight(), 0);
-  }
-
-  _getLandingHeight() {
-    // The drone base is 4 units tall; y=3 makes its bottom sit on the watch top.
-    return 3;
-  }
-
-  _getBodyX() {
-    return 20;
-  }
-
-  _getExtensionX() {
-    return 15;
-  }
-
-  _getGuardRadius() {
-    return this._getExtensionX()/3;
-  }
-
-  _getConnectionX() {
-    return this._getGuardRadius();
-  }
-
-  _getRotorRadius() {
-    return this._getGuardRadius()/6;
-  }
-
-  _getProppellerLength() {
-    return this._getGuardRadius()*2/3;
-  }
-
-  _getProppellerWidth() {
-    return this._getProppellerLength()/6;
-  }
-
-  _getBaseDescolagemY() {
-    return 4;
+    return new THREE.Vector3(0, this._landingHeight, 0);
   }
  
   _addBaseDescolagem() {
     const base = new THREE.Mesh(
-      new THREE.BoxGeometry(this._getBaseDescolagemY()*5, this._getBaseDescolagemY(), this._getBaseDescolagemY()*5),
+      new THREE.BoxGeometry(this._bodyX, this._bodyY, this._bodyZ),
       new THREE.MeshBasicMaterial({ color: 0xF1EFE8 }));
     this.add(base);
   }
 
   _addBotaoDescolagem() {
     const botao = new THREE.Mesh(
-      new THREE.BoxGeometry(4, 1.5, 4),
+      new THREE.BoxGeometry(this._takeoffButtonX, this._takeoffButtonY, this._takeoffButtonZ),
       new THREE.MeshBasicMaterial({ color: 0xE24B4A }));
     botao.position.set(0, 2.75, 8);
     this.add(botao);
@@ -232,7 +248,7 @@ class Drone extends THREE.Group {
 
   _addSuporteCamara() {
     const suporte = new THREE.Mesh(
-      new THREE.BoxGeometry(4, 1, 4),
+      new THREE.BoxGeometry(this._cameraSupportX, this._cameraSupportY, this._cameraSupportZ),
       new THREE.MeshBasicMaterial({ color: 0x185FA5 }));
     suporte.position.set(0, 2.5, -8);
     this.add(suporte);
@@ -240,7 +256,7 @@ class Drone extends THREE.Group {
 
   _addLens() {
     const lens = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.5, 1.5, 0.3, 32),
+      new THREE.CylinderGeometry(this._lensRadiusTop, this._lensRadiusBottom, this._lensHeight, this._lensRadialSegments),
       new THREE.MeshBasicMaterial({ color: 0x378ADD }));
     lens.position.set(0, 3, -8);
     this.add(lens);
@@ -259,7 +275,7 @@ class Drone extends THREE.Group {
   
   _addRotorExtension() {
     const rotorExtensions = [0, 1, 2, 3].map(() => new THREE.Mesh(
-      new THREE.BoxGeometry(this._getExtensionX(), 0.5, 4),
+      new THREE.BoxGeometry(this._extensionX, this._extensionY, this._extensionZ),
       new THREE.MeshBasicMaterial({ color: 0xB4B2A9 })));
 
     this._addGuards(rotorExtensions);
@@ -268,9 +284,9 @@ class Drone extends THREE.Group {
     rotorExtensions.forEach((rotorExtension, index) => {
       rotorExtension.rotation.y = index * (Math.PI / 2) + Math.PI/4;
       const pos = new THREE.Vector3(
-        this._getBodyX()/2*Math.cos(index * Math.PI / 2 + Math.PI/4),
+        this._bodyX / 2 * Math.cos(index * Math.PI / 2 + Math.PI/4),
         0,
-        this._getBodyX()/2 *(-Math.sin(index * Math.PI / 2 + Math.PI/4))
+        this._bodyX / 2 * (-Math.sin(index * Math.PI / 2 + Math.PI/4))
       );
       rotorExtension.position.copy(pos);
       // store original position for folding/unfolding
@@ -284,11 +300,11 @@ class Drone extends THREE.Group {
 
   _addGuards(rotorExtensions) {
     const guards = [0, 1, 2, 3].map(() => new THREE.Mesh(
-      new THREE.TorusGeometry(this._getGuardRadius(), this._getGuardRadius()/10, 32, 100),
+      new THREE.TorusGeometry(this._guardRadius, this._guardTubeRadius, this._guardRadialSegments, this._guardTubularSegments),
       new THREE.MeshBasicMaterial({ color: 0xB4B2A9 })));
 
     guards.forEach((guard, index) => {
-      guard.position.set(this._getExtensionX()/2 + this._getGuardRadius(), 0, 0);
+      guard.position.set(this._extensionX / 2 + this._guardRadius, 0, 0);
       guard.rotation.x = Math.PI / 2;
       rotorExtensions[index].add(guard);
     });
@@ -296,13 +312,13 @@ class Drone extends THREE.Group {
 
   _addRotorConnections(rotorExtensions) {
     const connections = [0, 1, 2, 3].map(() => new THREE.Mesh(
-      new THREE.BoxGeometry(this._getConnectionX(), this._getConnectionX()/10, this._getConnectionX()/10),
+      new THREE.BoxGeometry(this._connectionX, this._connectionY, this._connectionZ),
       new THREE.MeshBasicMaterial({ color: 0x888780 })));
 
     this._addRotors(connections);
 
     connections.forEach((connection, index) => {
-      connection.position.set(this._getExtensionX()/2 + this._getConnectionX()/2, 0, 0);
+      connection.position.set(this._extensionX / 2 + this._connectionX / 2, 0, 0);
       connection.rotation.x = Math.PI / 2;
       rotorExtensions[index].add(connection);
     });
@@ -310,27 +326,27 @@ class Drone extends THREE.Group {
 
   _addRotors(connections) {
     this.rotors = [0, 1, 2, 3].map(() => new THREE.Mesh(
-      new THREE.CylinderGeometry(this._getRotorRadius(), this._getRotorRadius(), this._getRotorRadius()/2, 32),
+      new THREE.CylinderGeometry(this._rotorRadius, this._rotorRadius, this._rotorHeight, this._rotorRadialSegments),
       new THREE.MeshBasicMaterial({ color: 0x444441 })));
 
     this.rotors.forEach((rotor, index) => {
       rotor.rotation.x = Math.PI / 2;
       this._addProppellers(rotor);
-      rotor.position.set(this._getConnectionX()/2 + this._getRotorRadius()/2, 0, 0);
+      rotor.position.set(this._connectionX / 2 + this._rotorRadius / 2, 0, 0);
       connections[index].add(rotor);
     });
   }
 
   _addProppellers(rotor) {
     const proppellers = [0, 1, 2, 3].map(() => new THREE.Mesh(
-      new THREE.BoxGeometry(this._getProppellerLength(), this._getProppellerLength()/20, this._getProppellerWidth()),
+      new THREE.BoxGeometry(this._proppellerLength, this._proppellerHeight, this._proppellerWidth),
       new THREE.MeshBasicMaterial({ color: 0x2C2C2A })));
 
     proppellers.forEach((proppeller, index) => {
       proppeller.position.set(
-        (this._getRotorRadius() + this._getProppellerLength()/2)*Math.cos(index * Math.PI / 2),
+        (this._rotorRadius + this._proppellerLength / 2) * Math.cos(index * Math.PI / 2),
         0,
-        (this._getRotorRadius() + this._getProppellerLength()/2)*Math.sin(index * Math.PI / 2)
+        (this._rotorRadius + this._proppellerLength / 2) * Math.sin(index * Math.PI / 2)
       );
       proppeller.rotation.y = index * (Math.PI / 2);
       rotor.add(proppeller);
