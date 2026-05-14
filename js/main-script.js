@@ -51,20 +51,18 @@ let hudElements = {
   infoHideButton: null,
   paramsHideButton: null,
   targetFoldSwitch: null,
-  yawSlider: null,
-  pitchSlider: null,
+  yawSpeedSlider: null,
+  pitchSpeedSlider: null,
+  watchScaleSlider: null,
+  balloonScaleSlider: null,
   droneSpeedSlider: null,
   rotorSpeedSlider: null,
-  yawValue: null,
-  pitchValue: null,
+  yawSpeedValue: null,
+  pitchSpeedValue: null,
+  watchScaleValue: null,
+  balloonScaleValue: null,
   droneSpeedValue: null,
   rotorSpeedValue: null,
-  xSlider: null,
-  ySlider: null,
-  zSlider: null,
-  xValue: null,
-  yValue: null,
-  zValue: null,
 };
 
 // Flags
@@ -106,8 +104,9 @@ document.body.appendChild( stats.dom );
 stats.dom.style.transform = 'scale(1.5)';
 stats.dom.style.transformOrigin = 'top left';
 
-let droneScale = 1;
-let canLandDroneDistance = droneScale*10;
+let watchScale = 1;
+let balloonScale = 1;
+let canLandDroneDistance = watchScale*10;
 
 ///////////////////////
 /* CLASS DEFINITIONS */
@@ -116,12 +115,18 @@ class SmartWatch extends THREE.Group {
   constructor() {
     super();
 
+    this.watchX = 20;
+    this.watchY = this.watchX / 10;
+    this.watchZ = this.watchX;
+
+    this.braceletScale = 0.45;
+    this.scale.set(watchScale, watchScale, watchScale);
     this._addWatch();
   }
 
   _addWatch() {
     const watch = new THREE.Mesh(
-      new THREE.BoxGeometry(20, 2, 20),
+      new THREE.BoxGeometry(this.watchX, this.watchY, this.watchZ),
       new THREE.MeshBasicMaterial({ color: 0xB2BEB5 })
     );
     this.add(watch);
@@ -131,7 +136,7 @@ class SmartWatch extends THREE.Group {
       const bracelet = gltf.scene;
       bracelet.name = "bracelet";
       bracelet.position.set(0, -6.4, 0);
-      bracelet.scale.set(0.45, 0.45, 0.45);
+      bracelet.scale.set(this.braceletScale, this.braceletScale, this.braceletScale);
       bracelet.traverse((node) => {
       if (node.isMesh) {
         node.material = new THREE.MeshBasicMaterial({
@@ -153,7 +158,7 @@ class Drone extends THREE.Group {
     super();
 
     // Geometry constants and grouped dimensions
-    this._bodyY = droneScale*4;
+    this._bodyY = 4;
     this._landingHeight = this._bodyY * 3 / 4;
     this._bodyX = this._bodyY * 5;
     this._bodyZ = this._bodyX;
@@ -202,11 +207,13 @@ class Drone extends THREE.Group {
 
     // approximate collision sphere radius
     // depends on guard radius
-    this._collisionRadius = this._guardRadius; 
+    this._baseCollisionRadius = this._guardRadius;
+    this._collisionRadius = this._baseCollisionRadius * watchScale; 
+    this.scale.set(watchScale, watchScale, watchScale);
     
-    this._addBaseDescolagem();
-    this._addBotaoDescolagem();
-    this._addSuporteCamara();
+    this._addBody();
+    this._addTakeoffButton();
+    this._addCameraSupport();
     this._addLens();
     this._addRotorExtension();
     
@@ -231,14 +238,14 @@ class Drone extends THREE.Group {
     return new THREE.Vector3(0, this._landingHeight, 0);
   }
  
-  _addBaseDescolagem() {
+  _addBody() {
     const base = new THREE.Mesh(
       new THREE.BoxGeometry(this._bodyX, this._bodyY, this._bodyZ),
       new THREE.MeshBasicMaterial({ color: 0xF1EFE8 }));
     this.add(base);
   }
 
-  _addBotaoDescolagem() {
+  _addTakeoffButton() {
     const botao = new THREE.Mesh(
       new THREE.BoxGeometry(this._takeoffButtonX, this._takeoffButtonY, this._takeoffButtonZ),
       new THREE.MeshBasicMaterial({ color: 0xE24B4A }));
@@ -246,7 +253,7 @@ class Drone extends THREE.Group {
     this.add(botao);
   }
 
-  _addSuporteCamara() {
+  _addCameraSupport() {
     const suporte = new THREE.Mesh(
       new THREE.BoxGeometry(this._cameraSupportX, this._cameraSupportY, this._cameraSupportZ),
       new THREE.MeshBasicMaterial({ color: 0x185FA5 }));
@@ -471,21 +478,47 @@ class Drone extends THREE.Group {
   setRotorSpeed(speed) {
     this._rotorSpeed = speed;
   }
+
+  setYawSpeed(speed) {
+    this._rotationSpeed = speed;
+  }
+
+  setPitchSpeed(speed) {
+    this._pitchSpeed = speed;
+  }
 }
 
 class Baloon extends THREE.Group {
   constructor() {
     super();
 
+    // Body radius is the seed; other values keep the same proportions as before.
+    this._baseBodyRadius = 7;
+    this._bodyRadius = this._baseBodyRadius;
+    this._bodyRadialSegments = 32;
+    this._bodyHeightSegments = 32;
+
+    this._nodeRadius = this._bodyRadius * 3 / 14;
+    this._nodeHeight = this._bodyRadius * 2 / 7;
+    this._nodeRadialSegments = 16;
+    this._nodeOffsetY = -this._bodyRadius;
+
+    this._stripRadiusTop = this._bodyRadius / 70;
+    this._stripRadiusBottom = this._stripRadiusTop;
+    this._stripHeight = this._bodyRadius * 6 / 7;
+    this._stripRadialSegments = 8;
+    this._stripOffsetY = -this._bodyRadius * 11 / 7;
+
     this._addBody();
     this._addNode();
     this._addStrip();
-    this._collisionRadius = 7; // matches SphereGeometry radius in _addBody()
+    this.scale.set(balloonScale, balloonScale, balloonScale);
+    this._collisionRadius = this._baseBodyRadius * balloonScale; // matches SphereGeometry radius in _addBody()
   }
 
   _addBody() {
     const body = new THREE.Mesh(
-      new THREE.SphereGeometry(7, 32, 32),
+      new THREE.SphereGeometry(this._bodyRadius, this._bodyRadialSegments, this._bodyHeightSegments),
       new THREE.MeshBasicMaterial({ color: 0xFF4444 })
     );
     this.add(body);
@@ -493,21 +526,26 @@ class Baloon extends THREE.Group {
   
   _addNode() {
     const node = new THREE.Mesh(
-      new THREE.ConeGeometry(1.5, 2, 16),
+      new THREE.ConeGeometry(this._nodeRadius, this._nodeHeight, this._nodeRadialSegments),
       new THREE.MeshBasicMaterial({ color: 0xCC0000 })
     );
-    node.position.y = -7;
+    node.position.y = this._nodeOffsetY;
     this.add(node);
   }
 
   _addStrip() {
     const strip = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.1, 0.1, 6, 8),
+      new THREE.CylinderGeometry(this._stripRadiusTop, this._stripRadiusBottom, this._stripHeight, this._stripRadialSegments),
       new THREE.MeshBasicMaterial({ color: 0xEEEEEE })
     );
 
-    strip.position.y = -11; 
+    strip.position.y = this._stripOffsetY; 
     this.add(strip);
+  }
+
+  setScaleFactor(scale) {
+    this.scale.set(scale, scale, scale);
+    this._collisionRadius = this._baseBodyRadius * scale;
   }
 }
 
@@ -526,6 +564,31 @@ function addRandomBalloons() {
     scene.add(balloon);
     balloons.push(balloon);
   }
+}
+
+function setWatchScale(scale) {
+  watchScale = scale;
+  if (smartWatch) {
+    smartWatch.scale.set(scale, scale, scale);
+  }
+  if (drone) {
+    drone.scale.set(scale, scale, scale);
+    if (drone._baseCollisionRadius != null) {
+      drone._collisionRadius = drone._baseCollisionRadius * scale;
+    }
+  }
+  canLandDroneDistance = watchScale * 10;
+}
+
+function setBalloonScale(scale) {
+  balloonScale = scale;
+  balloons.forEach((balloon) => {
+    if (balloon && typeof balloon.setScaleFactor === 'function') {
+      balloon.setScaleFactor(scale);
+    } else if (balloon) {
+      balloon.scale.set(scale, scale, scale);
+    }
+  });
 }
 
 /////////////////////
@@ -810,7 +873,6 @@ function update() {
   checkCollisions();
   // Animate any balloons that are popping
   updatePoppingBalloons(delta);
-  syncDronePositionHUD();
   syncParamsHUD();
 }
 
@@ -1066,35 +1128,18 @@ function initializeParamsHUD() {
   hudElements.paramsToggleButton = document.getElementById('params-hud-toggle');
   hudElements.paramsHideButton = document.getElementById('params-hud-hide-btn');
   hudElements.targetFoldSwitch = document.getElementById('target-fold-switch');
-  hudElements.yawSlider = document.getElementById('yaw-slider');
-  hudElements.pitchSlider = document.getElementById('pitch-slider');
+  hudElements.yawSpeedSlider = document.getElementById('yaw-speed-slider');
+  hudElements.pitchSpeedSlider = document.getElementById('pitch-speed-slider');
+  hudElements.watchScaleSlider = document.getElementById('watch-scale-slider');
+  hudElements.balloonScaleSlider = document.getElementById('balloon-scale-slider');
   hudElements.droneSpeedSlider = document.getElementById('drone-speed-slider');
   hudElements.rotorSpeedSlider = document.getElementById('rotor-speed-slider');
-  hudElements.yawValue = document.getElementById('yaw-value');
-  hudElements.pitchValue = document.getElementById('pitch-value');
+  hudElements.yawSpeedValue = document.getElementById('yaw-speed-value');
+  hudElements.pitchSpeedValue = document.getElementById('pitch-speed-value');
+  hudElements.watchScaleValue = document.getElementById('watch-scale-value');
+  hudElements.balloonScaleValue = document.getElementById('balloon-scale-value');
   hudElements.droneSpeedValue = document.getElementById('drone-speed-value');
   hudElements.rotorSpeedValue = document.getElementById('rotor-speed-value');
-  hudElements.xSlider = document.getElementById('drone-x-slider');
-  hudElements.ySlider = document.getElementById('drone-y-slider');
-  hudElements.zSlider = document.getElementById('drone-z-slider');
-  hudElements.xValue = document.getElementById('drone-x-value');
-  hudElements.yValue = document.getElementById('drone-y-value');
-  hudElements.zValue = document.getElementById('drone-z-value');
-
-  const applyPositionFromSliders = () => {
-    if (!drone || !hudElements.xSlider || !hudElements.ySlider || !hudElements.zSlider) return;
-
-    const x = Number(hudElements.xSlider.value);
-    const y = Number(hudElements.ySlider.value);
-    const z = Number(hudElements.zSlider.value);
-
-    drone.setDronePos(x, y, z);
-    syncDronePositionHUD();
-  };
-
-  if (hudElements.xSlider) hudElements.xSlider.addEventListener('input', applyPositionFromSliders);
-  if (hudElements.ySlider) hudElements.ySlider.addEventListener('input', applyPositionFromSliders);
-  if (hudElements.zSlider) hudElements.zSlider.addEventListener('input', applyPositionFromSliders);
 
   if (hudElements.targetFoldSwitch) {
     hudElements.targetFoldSwitch.addEventListener('change', () => {
@@ -1104,18 +1149,32 @@ function initializeParamsHUD() {
     });
   }
 
-  if (hudElements.yawSlider) {
-    hudElements.yawSlider.addEventListener('input', () => {
+  if (hudElements.yawSpeedSlider) {
+    hudElements.yawSpeedSlider.addEventListener('input', () => {
       if (!drone) return;
-      drone.setYawDegrees(Number(hudElements.yawSlider.value));
+      drone.setYawSpeed(Number(hudElements.yawSpeedSlider.value));
       syncParamsHUD();
     });
   }
 
-  if (hudElements.pitchSlider) {
-    hudElements.pitchSlider.addEventListener('input', () => {
+  if (hudElements.pitchSpeedSlider) {
+    hudElements.pitchSpeedSlider.addEventListener('input', () => {
       if (!drone) return;
-      drone.setPitchDegrees(Number(hudElements.pitchSlider.value));
+      drone.setPitchSpeed(Number(hudElements.pitchSpeedSlider.value));
+      syncParamsHUD();
+    });
+  }
+
+  if (hudElements.watchScaleSlider) {
+    hudElements.watchScaleSlider.addEventListener('input', () => {
+      setWatchScale(Number(hudElements.watchScaleSlider.value));
+      syncParamsHUD();
+    });
+  }
+
+  if (hudElements.balloonScaleSlider) {
+    hudElements.balloonScaleSlider.addEventListener('input', () => {
+      setBalloonScale(Number(hudElements.balloonScaleSlider.value));
       syncParamsHUD();
     });
   }
@@ -1139,25 +1198,8 @@ function initializeParamsHUD() {
   if (hudElements.paramsToggleButton) hudElements.paramsToggleButton.addEventListener('click', toggleParamsHUDVisibility);
   if (hudElements.paramsHideButton) hudElements.paramsHideButton.addEventListener('click', toggleParamsHUDVisibility);
 
-  syncDronePositionHUD();
   syncParamsHUD();
   updateParamsHUDVisibility();
-}
-
-function syncDronePositionHUD() {
-  if (!drone) return;
-
-  const x = Math.round(drone.position.x);
-  const y = Math.round(drone.position.y);
-  const z = Math.round(drone.position.z);
-
-  if (hudElements.xSlider) hudElements.xSlider.value = x;
-  if (hudElements.ySlider) hudElements.ySlider.value = y;
-  if (hudElements.zSlider) hudElements.zSlider.value = z;
-
-  if (hudElements.xValue) hudElements.xValue.textContent = x;
-  if (hudElements.yValue) hudElements.yValue.textContent = y;
-  if (hudElements.zValue) hudElements.zValue.textContent = z;
 }
 
 function syncParamsHUD() {
@@ -1167,16 +1209,17 @@ function syncParamsHUD() {
     hudElements.targetFoldSwitch.checked = drone._targetFold === 1;
   }
 
-  const yawDeg = Math.round(THREE.MathUtils.radToDeg(drone.rotation.y));
-  const pitchDeg = Math.round(THREE.MathUtils.radToDeg(drone.rotation.x));
-
-  if (hudElements.yawSlider) hudElements.yawSlider.value = yawDeg;
-  if (hudElements.pitchSlider) hudElements.pitchSlider.value = pitchDeg;
+  if (hudElements.yawSpeedSlider) hudElements.yawSpeedSlider.value = drone._rotationSpeed;
+  if (hudElements.pitchSpeedSlider) hudElements.pitchSpeedSlider.value = drone._pitchSpeed;
+  if (hudElements.watchScaleSlider) hudElements.watchScaleSlider.value = watchScale;
+  if (hudElements.balloonScaleSlider) hudElements.balloonScaleSlider.value = balloonScale;
   if (hudElements.droneSpeedSlider) hudElements.droneSpeedSlider.value = drone._moveSpeed;
   if (hudElements.rotorSpeedSlider) hudElements.rotorSpeedSlider.value = drone._rotorSpeed;
 
-  if (hudElements.yawValue) hudElements.yawValue.textContent = `${yawDeg}°`;
-  if (hudElements.pitchValue) hudElements.pitchValue.textContent = `${pitchDeg}°`;
+  if (hudElements.yawSpeedValue) hudElements.yawSpeedValue.textContent = Number(drone._rotationSpeed).toFixed(2);
+  if (hudElements.pitchSpeedValue) hudElements.pitchSpeedValue.textContent = Number(drone._pitchSpeed).toFixed(2);
+  if (hudElements.watchScaleValue) hudElements.watchScaleValue.textContent = Number(watchScale).toFixed(2);
+  if (hudElements.balloonScaleValue) hudElements.balloonScaleValue.textContent = Number(balloonScale).toFixed(2);
   if (hudElements.droneSpeedValue) hudElements.droneSpeedValue.textContent = drone._moveSpeed;
   if (hudElements.rotorSpeedValue) hudElements.rotorSpeedValue.textContent = Number(drone._rotorSpeed).toFixed(2);
 }

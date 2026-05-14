@@ -60,27 +60,6 @@
         <button id="params-hud-hide-btn" class="hud-hide-btn" type="button">Hide</button>
       </div>
 
-      <div class="hud-section hud-position-section">
-        <div class="hud-subtitle">Drone Position</div>
-
-        <label class="slider-control" for="drone-x-slider">
-          <span>X: <strong id="drone-x-value">0</strong></span>
-          <input id="drone-x-slider" type="range" min="-100" max="100" step="1" value="0" />
-        </label>
-
-        <label class="slider-control" for="drone-y-slider">
-          <span>Y: <strong id="drone-y-value">3</strong></span>
-          <input id="drone-y-slider" type="range" min="0" max="100" step="1" value="3" />
-        </label>
-
-        <label class="slider-control" for="drone-z-slider">
-          <span>Z: <strong id="drone-z-value">0</strong></span>
-          <input id="drone-z-slider" type="range" min="-100" max="100" step="1" value="0" />
-        </label>
-      </div>
-
-      <hr class="hud-divider"/>
-
       <div class="hud-section hud-params-section">
         <div class="hud-subtitle">Drone State</div>
 
@@ -89,14 +68,24 @@
           <input id="target-fold-switch" type="checkbox" />
         </label>
 
-        <label class="slider-control" for="yaw-slider">
-          <span>Yaw: <strong id="yaw-value">0°</strong></span>
-          <input id="yaw-slider" type="range" min="-180" max="180" step="1" value="0" />
+        <label class="slider-control" for="yaw-speed-slider">
+          <span>Yaw Speed: <strong id="yaw-speed-value">3.14</strong></span>
+          <input id="yaw-speed-slider" type="range" min="0.10" max="6.28" step="0.01" value="3.14" />
         </label>
 
-        <label class="slider-control" for="pitch-slider">
-          <span>Pitch: <strong id="pitch-value">0°</strong></span>
-          <input id="pitch-slider" type="range" min="-30" max="30" step="1" value="0" />
+        <label class="slider-control" for="pitch-speed-slider">
+          <span>Pitch Speed: <strong id="pitch-speed-value">1.57</strong></span>
+          <input id="pitch-speed-slider" type="range" min="0.10" max="6.28" step="0.01" value="1.57" />
+        </label>
+
+        <label class="slider-control" for="watch-scale-slider">
+          <span>Watch Scale: <strong id="watch-scale-value">1.00</strong></span>
+          <input id="watch-scale-slider" type="range" min="0.25" max="3" step="0.05" value="1" />
+        </label>
+
+        <label class="slider-control" for="balloon-scale-slider">
+          <span>Balloon Scale: <strong id="balloon-scale-value">1.00</strong></span>
+          <input id="balloon-scale-slider" type="range" min="0.25" max="3" step="0.05" value="1" />
         </label>
 
         <label class="slider-control" for="drone-speed-slider">
