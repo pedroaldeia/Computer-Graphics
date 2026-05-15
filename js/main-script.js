@@ -1,19 +1,7 @@
 import * as THREE from "three";
 import Stats from 'stats';
-import { createBracelet } from './bracelet.js';
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-/// TEMP PLEASE DELETE BEFORE SUBMISSION ///
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-////////////
-// import { perspectiveDepthToViewZ } from "three/src/nodes/display/ViewportDepthNode.js";
-// import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-// import { VRButton } from "three/addons/webxr/VRButton.js";
-// import * as Stats from "three/addons/libs/stats.module.js";
-// import { GUI } from "three/addons/libs/lil-gui.module.min.js";
 
-//////////////////////
-/* GLOBAL VARIABLES */
-//////////////////////
 const HEIGHT = window.innerHeight;
 const WIDTH = window.innerWidth;
 const BACKGROUND = new THREE.Color(0x404040);
@@ -29,22 +17,18 @@ let camera;
 
 let smartWatch, drone, baloon;
 // Array to track balloons for collision checks
-let balloons = [];
+const balloons = [];
 
 // Helpers
-let cameraHelpers = [];
-let axesHelpers = [];
+const cameraHelpers = [];
+const axesHelpers = [];
 let helpersVisible = true;
 let wireframeActive = false;
 let collisionBoxesVisible = false;
 let infoHudVisible = true;
 let paramsHudVisible = true;
 
-/// TEMP PLEASE DELETE BEFORE SUBMISSION ///
-let controls;
-////////////
-
-let hudElements = {
+const hudElements = {
   infoPanel: null,
   paramsPanel: null,
   infoToggleButton: null,
@@ -67,7 +51,7 @@ let hudElements = {
 };
 
 // Flags
-let pressed = {
+const pressed = {
   topCamera: false,
   lateralCamera: false,
   frontalCamera: false,
@@ -77,7 +61,7 @@ let pressed = {
 };
 
 // Movement state for continuous input (A/D, W/S, U/J)
-let movementState = {
+const movementState = {
   left: false,
   right: false,
   up: false, // W
@@ -92,14 +76,14 @@ let inputLocked = false;
 // Clock for frame delta time
 const clock = new THREE.Clock();
 // Rotation input state (I/K + O/L pitch)
-let rotationState = {
+const rotationState = {
   yawLeft: false, // I
   yawRight: false, // K
   pitchUp: false, // O
   pitchDown: false, // L
 };
 
-var stats = new Stats();
+const stats = new Stats();
 stats.showPanel(0);
 document.body.appendChild( stats.dom );
 stats.dom.style.transform = 'scale(1.5)';
@@ -108,6 +92,20 @@ stats.dom.style.transformOrigin = 'top left';
 let watchScale = 1;
 let balloonScale = 1;
 let canLandDroneDistance = watchScale*10;
+
+const CAMERA_KEY_IDS = {
+  Digit1: 'key-1', Numpad1: 'key-1',
+  Digit2: 'key-2', Numpad2: 'key-2',
+  Digit3: 'key-3', Numpad3: 'key-3',
+  Digit4: 'key-4', Numpad4: 'key-4',
+  Digit5: 'key-5', Numpad5: 'key-5',
+  Digit6: 'key-6', Numpad6: 'key-6',
+};
+
+function setActiveCamera(nextCamera) {
+  camera = nextCamera;
+  return;
+}
 
 ///////////////////////
 /* CLASS DEFINITIONS */
@@ -278,8 +276,6 @@ class Drone extends THREE.Group {
 
     this.mobileCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
     this.mobileCamera.position.set(0, 5, -8);
-    this.mobileCamera.lookAt(0, 0, 1000);
-    this.mobileCamera.rotateY(Math.PI);
     this.add(this.mobileCamera);
     mobileCamera = this.mobileCamera;
 
@@ -871,47 +867,27 @@ function updatePoppingBalloons(delta) {
 function update() {
   const delta = clock.getDelta();
   if (pressed.topCamera) {
-    camera = topCamera;
-    /// TEMP PLEASE DELETE BEFORE SUBMISSION ///
-    controls.object = camera;
-    controls.update();
-    ////////////
+    setActiveCamera(topCamera);
     pressed.topCamera = false;
   }
   if (pressed.lateralCamera) {
-    camera = lateralCamera;
-    /// TEMP PLEASE DELETE BEFORE SUBMISSION ///
-    controls.object = camera;
-    controls.update();
-    ////////////
+    setActiveCamera(lateralCamera);
     pressed.lateralCamera = false;
   }
   if (pressed.frontalCamera) {
-    camera = frontalCamera;
-    /// TEMP PLEASE DELETE BEFORE SUBMISSION ///
-    controls.object = camera;
-    controls.update();
-    ////////////
+    setActiveCamera(frontalCamera);
     pressed.frontalCamera = false;
   }
   if (pressed.orthogonalCamera) {
-    camera = orthogonalCamera;
-    /// TEMP PLEASE DELETE BEFORE SUBMISSION ///
-    controls.object = camera;
-    controls.update();
-    ////////////
+    setActiveCamera(orthogonalCamera);
     pressed.orthogonalCamera = false;
   }
   if (pressed.perspectiveCamera) {
-    camera = perspectiveCamera;
-    /// TEMP PLEASE DELETE BEFORE SUBMISSION ///
-    controls.object = camera;
-    controls.update();
-    ////////////
+    setActiveCamera(perspectiveCamera);
     pressed.perspectiveCamera = false;
   }
   if (pressed.mobileCamera) {
-    camera = mobileCamera;
+    setActiveCamera(mobileCamera);
     pressed.mobileCamera = false;
   }
   // Continuous movement: compute direction from simultaneous keys
@@ -969,20 +945,6 @@ function init() {
   initializeInfoHUD();
   initializeParamsHUD();
 
-  //////////////////////////////
-  // TEMP PLEASE DELETE BEFORE SUBMISSION
-  //////////////////////////////
-  controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.05;
-  controls.target.set(0, 0, 0);
-  controls.panSpeed = 1.5;
-  controls.zoomSpeed = 1.2;
-  controls.rotateSpeed = 1.0;
-  //////////////////////////////
-  //////////////////////////////
-  //////////////////////////////
-
   window.addEventListener("resize", onResize);
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("keyup", onKeyUp);
@@ -995,9 +957,6 @@ function animate() {
   stats.begin();
 
   update();
-  // TEMP PLEASE DELETE BEFORE SUBMISSION //
-  if (controls) controls.update();
-  //////////////////////////////
   render();
 	
   stats.end();
@@ -1021,36 +980,36 @@ function onResize() {
 ///////////////////////
 function onKeyDown(e) {
   if (inputLocked) return;
-  updateHUD(e.keyCode, true);
-  switch (e.keyCode) {
+  updateHUD(e.code, true);
+  switch (e.code) {
     // Camera controls
-    case 49:
-    case 97:
+    case 'Digit1':
+    case 'Numpad1':
       pressed.topCamera = true; // 1
       break;
-    case 50:
-    case 98:
+    case 'Digit2':
+    case 'Numpad2':
       pressed.lateralCamera = true; // 2
       break;
-    case 51:
-    case 99:
+    case 'Digit3':
+    case 'Numpad3':
       pressed.frontalCamera = true; // 3
       break;
-    case 52:
-    case 100:
+    case 'Digit4':
+    case 'Numpad4':
       pressed.orthogonalCamera = true; // 4
       break;
-    case 53:
-    case 101:
+    case 'Digit5':
+    case 'Numpad5':
       pressed.perspectiveCamera = true; // 5
       break;
-    case 54:
-    case 102:
+    case 'Digit6':
+    case 'Numpad6':
       pressed.mobileCamera = true; // 6
       break;
 
     // H
-    case 72:
+    case 'KeyH':
       helpersVisible = !helpersVisible;
       cameraHelpers.forEach((helper) => {
         helper.visible = helpersVisible;
@@ -1063,7 +1022,8 @@ function onKeyDown(e) {
       break;
 
     // 7
-    case 55: case 103:
+    case 'Digit7':
+    case 'Numpad7':
       wireframeActive = !wireframeActive;
       scene.traverse((node) => {
         if (node instanceof THREE.Mesh) node.material.wireframe = wireframeActive;
@@ -1072,7 +1032,7 @@ function onKeyDown(e) {
       break;
 
     // Z - toggle collision boxes
-    case 90: case 122:
+    case 'KeyZ':
       collisionBoxesVisible = !collisionBoxesVisible;
       if (drone && drone.collisionSpheres) {
         drone.collisionSpheres.forEach((sphere) => {
@@ -1088,53 +1048,53 @@ function onKeyDown(e) {
       break;
 
     // Q - fold/unfold drone arms
-    case 81: case 113:
+    case 'KeyQ':
         drone.handleArmsFold();
       break;
 
     // A / D - move drone on X axis (só voa se braços estendidos)
-    case 65: case 97: // A
+    case 'KeyA': // A
       toggleHUDKey('key-a', true);
       movementState.left = true;
       break;
-    case 68: case 100: // D
+    case 'KeyD': // D
       toggleHUDKey('key-d', true);
       movementState.right = true;
       break;
     // W / S - move drone on Y axis (continuous)
-    case 87: case 119: // W
+    case 'KeyW': // W
       toggleHUDKey('key-w', true);
       movementState.up = true;
       break;
-    case 83: case 115: // S
+    case 'KeyS': // S
       toggleHUDKey('key-s', true);
       movementState.down = true;
       break;
 
     // U / J - move drone on Z axis (continuous)
-    case 85: case 117: // U
+    case 'KeyU': // U
       toggleHUDKey('key-u', true);
       movementState.forward = true;
       break;
-    case 74: case 106: // J
+    case 'KeyJ': // J
       toggleHUDKey('key-j', true);
       movementState.backward = true;
       break;
     // I / K - yaw rotation around Y axis
-    case 73: case 105: // I
+    case 'KeyI': // I
       toggleHUDKey('key-i', true);
       rotationState.yawLeft = true;
       break;
-    case 75: case 107: // K
+    case 'KeyK': // K
       toggleHUDKey('key-k', true);
       rotationState.yawRight = true;
       break;
     // O / L - pitch rotation around X axis (limited)
-    case 79: case 111: // O
+    case 'KeyO': // O
       toggleHUDKey('key-o', true);
       rotationState.pitchUp = true;
       break;
-    case 76: case 108: // L
+    case 'KeyL': // L
       toggleHUDKey('key-l', true);
       rotationState.pitchDown = true;
       break;
@@ -1147,44 +1107,44 @@ function onKeyDown(e) {
 function onKeyUp(e) {
   if (inputLocked) return;
 
-  switch (e.keyCode) {
-    case 65: case 97: // A
+  switch (e.code) {
+    case 'KeyA': // A
       toggleHUDKey('key-a', false);
       movementState.left = false;
       break;
-    case 68: case 100: // D
+    case 'KeyD': // D
       toggleHUDKey('key-d', false);
       movementState.right = false;
       break;
-    case 87: case 119: // W
+    case 'KeyW': // W
       toggleHUDKey('key-w', false);
       movementState.up = false;
       break;
-    case 83: case 115: // S
+    case 'KeyS': // S
       toggleHUDKey('key-s', false);
       movementState.down = false;
       break;
-    case 85: case 117: // U
+    case 'KeyU': // U
       toggleHUDKey('key-u', false);
       movementState.forward = false;
       break;
-    case 74: case 106: // J
+    case 'KeyJ': // J
       toggleHUDKey('key-j', false);
       movementState.backward = false;
       break;
-    case 73: case 105: // I
+    case 'KeyI': // I
       toggleHUDKey('key-i', false);
       rotationState.yawLeft = false;
       break;
-    case 75: case 107: // K
+    case 'KeyK': // K
       toggleHUDKey('key-k', false);
       rotationState.yawRight = false;
       break;
-    case 79: case 111: // O
+    case 'KeyO': // O
       toggleHUDKey('key-o', false);
       rotationState.pitchUp = false;
       break;
-    case 76: case 108: // L
+    case 'KeyL': // L
       toggleHUDKey('key-l', false);
       rotationState.pitchDown = false;
       break;
@@ -1348,27 +1308,17 @@ function toggleParamsHUDVisibility() {
   updateParamsHUDVisibility();
 }
 
-function updateHUD(keyCode, isPressed) {
-  if (keyCode >= 49 && keyCode <= 54 || keyCode >= 97 && keyCode <= 102) {
-    let elementId = '';
+function updateHUD(code, isPressed) {
+  const elementId = CAMERA_KEY_IDS[code];
+  if (!elementId || !isPressed) return;
 
-    switch (keyCode) {
-      case 49: case 97:  elementId = 'key-1'; break;
-      case 50: case 98:  elementId = 'key-2'; break;
-      case 51: case 99:  elementId = 'key-3'; break;
-      case 52: case 100: elementId = 'key-4'; break;
-      case 53: case 101: elementId = 'key-5'; break;
-      case 54: case 102: elementId = 'key-6'; break;
-    }
+  ['key-1', 'key-2', 'key-3', 'key-4', 'key-5', 'key-6'].forEach((id) => {
+    const item = document.getElementById(id);
+    if (item) item.classList.remove('active');
+  });
 
-    const el = document.getElementById(elementId);
-      if (isPressed) {
-        ['key-1', 'key-2', 'key-3', 'key-4', 'key-5', 'key-6'].forEach(id => {
-          document.getElementById(id).classList.remove('active');
-        });
-        el.classList.add('active');
-      }
-  }
+  const el = document.getElementById(elementId);
+  if (el) el.classList.add('active');
 }
 
 function toggleHUDKey(elementId, isActive) {
