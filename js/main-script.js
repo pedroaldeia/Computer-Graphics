@@ -41,10 +41,6 @@ const CONFIG = {
     MOBILE_FAR: 1000,
     MOBILE_POSITION: { x: 0, y: 5, z: -8 },
   },
-  COLLISION: {
-    BALLOON_RADIUS_FALLBACK: 7,
-    DRONE_RADIUS_FALLBACK: 12,
-  },
 };
 
 const cameraManager = {
@@ -150,6 +146,10 @@ function setActiveCamera(nextCamera) {
   cameraManager.active = nextCamera;
 }
 
+// Update projection matrices for all cameras.
+// Orthographic cameras are positioned using a "half size" which is scaled by the
+// current aspect ratio to produce left/right extents. Perspective cameras only
+// need the aspect updated.
 function updateCameraProjections() {
   const aspect = window.innerWidth / window.innerHeight;
 
@@ -180,7 +180,8 @@ function updateCameraProjections() {
 
 function isBalloonSpawnPositionValid(position, balloonRadius) {
   if (!position) return false;
-
+  // Ensure proposed balloon position does not overlap existing balloons.
+  // Uses configured clearance and per-balloon collision radii.
   const clearance = CONFIG.BALLOON.SPAWN_CLEARANCE;
   const balloonCenter = position.clone();
 
@@ -188,8 +189,7 @@ function isBalloonSpawnPositionValid(position, balloonRadius) {
     if (!existingBalloon) continue;
     const existingPos = new THREE.Vector3();
     existingBalloon.getWorldPosition(existingPos);
-    const existingRadius = existingBalloon._collisionRadius || CONFIG.COLLISION.BALLOON_RADIUS_FALLBACK;
-    const minDistanceBetweenBalloons = existingRadius + balloonRadius + clearance;
+    const minDistanceBetweenBalloons = existingBalloon._collisionRadius + balloonRadius + clearance;
     if (existingPos.distanceTo(balloonCenter) < minDistanceBetweenBalloons) {
       return false;
     }
@@ -247,10 +247,8 @@ class Drone extends THREE.Group {
   constructor() {
     super();
 
-    // Geometry constants and grouped dimensions
-    // The dimensions all depend somewhat on another part of the drone, except for _bodyY.
-    // We did this because we found it more readable, since it puts the dimensions into perspective
-    // rather than raw numbers.
+    // Geometry constants and derived dimensions (kept grouped for readability).
+    // Most dimensions are derived from a single base dimension to keep proportions consistent.
     this._bodyY = 4;
     this._landingHeight = this._bodyY / 4 * 3;
     this._bodyX = this._bodyY * 5;
@@ -309,7 +307,7 @@ class Drone extends THREE.Group {
     this._addLens();
     this._addRotorExtension();
     
-    // set initial position from getStartPos (returns a Vector3)
+    // set initial position from getStartPos
     this.position.copy(this.getStartPos());
     this._moveSpeed = CONFIG.DRONE.MOVE_SPEED; // units per second (tweakable)
     this._rotationSpeed = CONFIG.DRONE.YAW_SPEED; // radians per second (tweakable)
@@ -409,7 +407,6 @@ class Drone extends THREE.Group {
       this.add(rotorExtension);
     });
 
-    // keep reference for later animation
     this.rotorExtensions = rotorExtensions;
   }
 
@@ -493,6 +490,8 @@ class Drone extends THREE.Group {
     if (!this.rotorExtensions) return;
     if (this._foldProgress === this._targetFold) return;
 
+    // foldProgress: 0 = fully extended, 1 = fully folded. targetFold indicates
+    // the desired state and drives the interpolation direction.
     const dir = Math.sign(this._targetFold - this._foldProgress);
     this._foldProgress += dir * this._foldSpeed;
     if (dir > 0 && this._foldProgress > this._targetFold) this._foldProgress = this._targetFold;
@@ -525,7 +524,8 @@ class Drone extends THREE.Group {
   if (this._foldProgress === 0 && this._targetFold === 0) {
 
     this.rotors.forEach(rotor => {
-      // rotação no eixo Y local
+      // Rotate propellers. deltaTime ensures per/second correlation with 
+      // rotation speed, instead of depending fully on frame-rate
       rotor.rotation.y += this._rotorSpeed * (deltaTime * 100 || 0);
 
     });
@@ -540,6 +540,8 @@ class Drone extends THREE.Group {
   // Move drone in an arbitrary direction vector (constant speed)
   // dirVector: THREE.Vector3 (direction); deltaTime: seconds
   moveDirection(dirVector, deltaTime) {
+    // Movement is only allowed when arms are fully extended to avoid
+    // repositioning the drone while folded.
     if (!this.isArmsExtended()) return;
     if (!dirVector || dirVector.lengthSq() === 0) return;
     const dir = dirVector.clone().normalize();
@@ -574,9 +576,10 @@ class Drone extends THREE.Group {
     if (this._targetFold === 1) {
       // arms are folded, so unfold them
       this._targetFold = 0;
-    } else if (canLandDrone()) {
-      // arms are extended and drone is close to watch, so land and fold
-      this.landDrone();
+    } else {
+      // if arms are extended and drone is close to watch land watch
+      if (canLandDrone()) this.landDrone();
+      // fold arms
       this._targetFold = 1;
     }
     
@@ -686,6 +689,8 @@ class Balloon extends THREE.Group {
 }
 
 function addRandomBalloons() {
+  // Spawn up to CONFIG.BALLOON.COUNT balloons. Each balloon placement will
+  // retry up to SPAWN_MAX_ATTEMPTS_PER_BALLOON to avoid overlaps.
   const numberOfBalloons = CONFIG.BALLOON.COUNT;
   const fixedY = CONFIG.BALLOON.SPAWN_Y_BASE;
 
@@ -724,8 +729,8 @@ function setWatchScale(scale) {
     smartWatch.scale.set(scale, scale, scale);
   }
   if (drone) {
-    drone.scale.set(scale, scale, scale);
     // rotor collision spheres scale together with the drone group
+    drone.scale.set(scale, scale, scale);
   }
   canLandDroneDistance = watchScale * CONFIG.WATCH.LAND_DISTANCE_MULTIPLIER;
 }
@@ -744,6 +749,7 @@ function setBalloonScale(scale) {
 /////////////////////
 /* CREATE SCENE(S) */
 /////////////////////
+
 function createScene() {
   scene = new THREE.Scene();
   scene.background = BACKGROUND;
@@ -869,16 +875,10 @@ function canLandDrone() {
   smartWatch.getWorldPosition(watchPos);
   drone.getWorldPosition(dronePos);
   const dist = watchPos.distanceTo(dronePos);
+  // Drone is allowed to land when within a distance threshold of the watch.
+  // The threshold scales with `watchScale`.
   return dist < canLandDroneDistance;
 }
-
-/////////////////////
-/* CREATE LIGHT(S) */
-/////////////////////
-
-////////////////////////
-/* CREATE OBJECT3D(S) */
-////////////////////////
 
 //////////////////////
 /* CHECK COLLISIONS */
@@ -914,15 +914,6 @@ function checkCollisions() {
             break;
           }
         }
-      } else {
-        // fallback to single-sphere approach (older code)
-        const dronePos = new THREE.Vector3();
-        drone.getWorldPosition(dronePos);
-        const droneRadius = (drone._collisionRadius != null)
-          ? drone._collisionRadius
-          : CONFIG.COLLISION.DRONE_RADIUS_FALLBACK;
-        const rSum = droneRadius + bRadius;
-        if (dronePos.distanceToSquared(bPos) <= rSum * rSum) hit = true;
       }
 
       if (hit) collided.push(b);
