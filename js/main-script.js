@@ -6,21 +6,32 @@ const HEIGHT = window.innerHeight;
 const WIDTH = window.innerWidth;
 const BACKGROUND = new THREE.Color(0x404040);
 
-let topCamera;
-let lateralCamera;
-let frontalCamera;
-let perspectiveCamera;
-let orthogonalCamera;
-let mobileCamera;
+const cameraManager = {
+  topCamera: null,
+  lateralCamera: null,
+  frontalCamera: null,
+  perspectiveCamera: null,
+  orthogonalCamera: null,
+  mobileCamera: null,
+  active: null,
+  helpers: [],
+  pressed: {
+    topCamera: false,
+    lateralCamera: false,
+    frontalCamera: false,
+    orthogonalCamera: false,
+    mobileCamera: false,
+    perspectiveCamera: false,
+  },
+};
+
 let renderer, scene;
-let camera;
 
 let smartWatch, drone, baloon;
 // Array to track balloons for collision checks
 const balloons = [];
 
 // Helpers
-const cameraHelpers = [];
 const axesHelpers = [];
 let helpersVisible = true;
 let wireframeActive = false;
@@ -51,14 +62,6 @@ const hudElements = {
 };
 
 // Flags
-const pressed = {
-  topCamera: false,
-  lateralCamera: false,
-  frontalCamera: false,
-  orthogonalCamera: false,
-  mobileCamera: false,
-  perspectiveCamera: false,
-};
 
 // Movement state for continuous input (A/D, W/S, U/J)
 const movementState = {
@@ -103,7 +106,7 @@ const CAMERA_KEY_IDS = {
 };
 
 function setActiveCamera(nextCamera) {
-  camera = nextCamera;
+  cameraManager.active = nextCamera;
   return;
 }
 
@@ -277,11 +280,11 @@ class Drone extends THREE.Group {
     this.mobileCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
     this.mobileCamera.position.set(0, 5, -8);
     this.add(this.mobileCamera);
-    mobileCamera = this.mobileCamera;
+    cameraManager.mobileCamera = this.mobileCamera;
 
     const mobileHelper = new THREE.CameraHelper(this.mobileCamera);
     scene.add(mobileHelper);
-    cameraHelpers.push(mobileHelper);
+    cameraManager.helpers.push(mobileHelper);
   }
   
   _addRotorExtension() {
@@ -358,6 +361,8 @@ class Drone extends THREE.Group {
       const sphereGeom = new THREE.SphereGeometry(this._baseRotorCollisionRadius, 8, 8);
       const sphereMat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
       const collisionSphere = new THREE.Mesh(sphereGeom, sphereMat);
+      collisionSphere.userData = collisionSphere.userData || {};
+      collisionSphere.userData.baseRadius = baseR;
       collisionSphere.visible = false; // visible for debugging collision areas
       rotor.add(collisionSphere);
       this.collisionSpheres.push(collisionSphere);
@@ -583,6 +588,8 @@ class Baloon extends THREE.Group {
     const sphereGeom = new THREE.SphereGeometry(this._bodyRadius, 8, 8);
     const sphereMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
     this.collisionSphere = new THREE.Mesh(sphereGeom, sphereMat);
+    this.collisionSphere.userData = this.collisionSphere.userData || {};
+    this.collisionSphere.userData.baseRadius = this._bodyRadius;
     this.collisionSphere.visible = false; // hidden by default
     this.add(this.collisionSphere);
   }
@@ -671,39 +678,39 @@ function createScene() {
 function setupCameras() {
     const aspect = window.innerWidth / window.innerHeight;
 
-    topCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
-    topCamera.position.set(0, 200, 0);
-    topCamera.lookAt(scene.position);
+    cameraManager.topCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
+    cameraManager.topCamera.position.set(0, 200, 0);
+    cameraManager.topCamera.lookAt(scene.position);
     
-    lateralCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
-    lateralCamera.position.set(0, 0, 200);
-    lateralCamera.lookAt(scene.position);
+    cameraManager.lateralCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
+    cameraManager.lateralCamera.position.set(0, 0, 200);
+    cameraManager.lateralCamera.lookAt(scene.position);
     
-    frontalCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
-    frontalCamera.position.set(200, 0, 0);
-    frontalCamera.lookAt(scene.position);
+    cameraManager.frontalCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
+    cameraManager.frontalCamera.position.set(200, 0, 0);
+    cameraManager.frontalCamera.lookAt(scene.position);
     
-    orthogonalCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
-    orthogonalCamera.position.set(-200, 10, 200);
-    orthogonalCamera.lookAt(scene.position);
+    cameraManager.orthogonalCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
+    cameraManager.orthogonalCamera.position.set(-200, 10, 200);
+    cameraManager.orthogonalCamera.lookAt(scene.position);
 
-    perspectiveCamera = new THREE.PerspectiveCamera(70, aspect, 1, 1000);
-    perspectiveCamera.position.set(-100, 20, 100);
-    perspectiveCamera.lookAt(scene.position);
+    cameraManager.perspectiveCamera = new THREE.PerspectiveCamera(70, aspect, 1, 1000);
+    cameraManager.perspectiveCamera.position.set(-100, 20, 100);
+    cameraManager.perspectiveCamera.lookAt(scene.position);
 
-    camera = perspectiveCamera;
+    cameraManager.active = cameraManager.perspectiveCamera;
 
     ////////////////////////
     // CAMERA HELPERS
     ////////////////////////
 
-    const topHelper = new THREE.CameraHelper(topCamera);
-    const lateralHelper = new THREE.CameraHelper(lateralCamera);
-    const frontalHelper = new THREE.CameraHelper(frontalCamera);
-    const orthogonalHelper = new THREE.CameraHelper(orthogonalCamera);
-    const perspectiveHelper = new THREE.CameraHelper(perspectiveCamera);
+    const topHelper = new THREE.CameraHelper(cameraManager.topCamera);
+    const lateralHelper = new THREE.CameraHelper(cameraManager.lateralCamera);
+    const frontalHelper = new THREE.CameraHelper(cameraManager.frontalCamera);
+    const orthogonalHelper = new THREE.CameraHelper(cameraManager.orthogonalCamera);
+    const perspectiveHelper = new THREE.CameraHelper(cameraManager.perspectiveCamera);
 
-    cameraHelpers.push(
+    cameraManager.helpers.push(
       topHelper,
       lateralHelper,
       frontalHelper,
@@ -711,7 +718,7 @@ function setupCameras() {
       perspectiveHelper
     );
 
-    cameraHelpers.forEach((helper) => {
+    cameraManager.helpers.forEach((helper) => {
       scene.add(helper);
     });
 }
@@ -759,7 +766,7 @@ function checkCollisions() {
           const sPos = new THREE.Vector3();
           s.getWorldPosition(sPos);
           // world radius = baseRadius * drone scale (assumes uniform scale)
-          const sBase = (s.userData && s.userData.baseRadius) || (drone._rotorRadius * 1.25 * 10);
+          const sBase = (s.userData && s.userData.baseRadius) || drone._baseRotorCollisionRadius;
           const sRadius = sBase * (drone.scale ? drone.scale.x : 1);
           const rSum = sRadius + bRadius;
           if (sPos.distanceToSquared(bPos) <= rSum * rSum) {
@@ -812,7 +819,7 @@ function handleCollisions(collidedArray) {
   movementState.left = movementState.right = movementState.up = movementState.down = movementState.forward = movementState.backward = false;
   rotationState.yawLeft = rotationState.yawRight = rotationState.pitchUp = rotationState.pitchDown = false;
   // clear camera pressed flags too
-  for (const k in pressed) if (Object.prototype.hasOwnProperty.call(pressed, k)) pressed[k] = false;
+  for (const k in cameraManager.pressed) if (Object.prototype.hasOwnProperty.call(cameraManager.pressed, k)) cameraManager.pressed[k] = false;
 }
 
 // Animate popping balloons (fade + shrink) and remove when done
@@ -866,29 +873,29 @@ function updatePoppingBalloons(delta) {
 ////////////
 function update() {
   const delta = clock.getDelta();
-  if (pressed.topCamera) {
-    setActiveCamera(topCamera);
-    pressed.topCamera = false;
+  if (cameraManager.pressed.topCamera) {
+    setActiveCamera(cameraManager.topCamera);
+    cameraManager.pressed.topCamera = false;
   }
-  if (pressed.lateralCamera) {
-    setActiveCamera(lateralCamera);
-    pressed.lateralCamera = false;
+  if (cameraManager.pressed.lateralCamera) {
+    setActiveCamera(cameraManager.lateralCamera);
+    cameraManager.pressed.lateralCamera = false;
   }
-  if (pressed.frontalCamera) {
-    setActiveCamera(frontalCamera);
-    pressed.frontalCamera = false;
+  if (cameraManager.pressed.frontalCamera) {
+    setActiveCamera(cameraManager.frontalCamera);
+    cameraManager.pressed.frontalCamera = false;
   }
-  if (pressed.orthogonalCamera) {
-    setActiveCamera(orthogonalCamera);
-    pressed.orthogonalCamera = false;
+  if (cameraManager.pressed.orthogonalCamera) {
+    setActiveCamera(cameraManager.orthogonalCamera);
+    cameraManager.pressed.orthogonalCamera = false;
   }
-  if (pressed.perspectiveCamera) {
-    setActiveCamera(perspectiveCamera);
-    pressed.perspectiveCamera = false;
+  if (cameraManager.pressed.perspectiveCamera) {
+    setActiveCamera(cameraManager.perspectiveCamera);
+    cameraManager.pressed.perspectiveCamera = false;
   }
-  if (pressed.mobileCamera) {
-    setActiveCamera(mobileCamera);
-    pressed.mobileCamera = false;
+  if (cameraManager.pressed.mobileCamera) {
+    setActiveCamera(cameraManager.mobileCamera);
+    cameraManager.pressed.mobileCamera = false;
   }
   // Continuous movement: compute direction from simultaneous keys
   const moveVec = new THREE.Vector3(
@@ -924,7 +931,7 @@ function update() {
 /* DISPLAY */
 /////////////
 function render() {
-  renderer.render(scene, camera);
+  renderer.render(scene, cameraManager.active);
 }
 
 ////////////////////////////////
@@ -948,6 +955,8 @@ function init() {
   window.addEventListener("resize", onResize);
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("keyup", onKeyUp);
+
+  animate();
 }
 
 /////////////////////
@@ -970,8 +979,8 @@ function onResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 
   if (window.innerHeight > 0 && window.innerWidth > 0) {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
+    cameraManager.active.aspect = window.innerWidth / window.innerHeight;
+    cameraManager.active.updateProjectionMatrix();
   }
 }
 
@@ -985,33 +994,33 @@ function onKeyDown(e) {
     // Camera controls
     case 'Digit1':
     case 'Numpad1':
-      pressed.topCamera = true; // 1
+      cameraManager.pressed.topCamera = true; // 1
       break;
     case 'Digit2':
     case 'Numpad2':
-      pressed.lateralCamera = true; // 2
+      cameraManager.pressed.lateralCamera = true; // 2
       break;
     case 'Digit3':
     case 'Numpad3':
-      pressed.frontalCamera = true; // 3
+      cameraManager.pressed.frontalCamera = true; // 3
       break;
     case 'Digit4':
     case 'Numpad4':
-      pressed.orthogonalCamera = true; // 4
+      cameraManager.pressed.orthogonalCamera = true; // 4
       break;
     case 'Digit5':
     case 'Numpad5':
-      pressed.perspectiveCamera = true; // 5
+      cameraManager.pressed.perspectiveCamera = true; // 5
       break;
     case 'Digit6':
     case 'Numpad6':
-      pressed.mobileCamera = true; // 6
+      cameraManager.pressed.mobileCamera = true; // 6
       break;
 
     // H
     case 'KeyH':
       helpersVisible = !helpersVisible;
-      cameraHelpers.forEach((helper) => {
+      cameraManager.helpers.forEach((helper) => {
         helper.visible = helpersVisible;
       });
 
@@ -1037,13 +1046,13 @@ function onKeyDown(e) {
       if (drone && drone.collisionSpheres) {
         drone.collisionSpheres.forEach((sphere) => {
           sphere.visible = collisionBoxesVisible;
-              balloons.forEach((balloon) => {
-                if (balloon && balloon.collisionSphere) {
-                  balloon.collisionSphere.visible = collisionBoxesVisible;
-                }
-              });
         });
       }
+      balloons.forEach((balloon) => {
+        if (balloon && balloon.collisionSphere) {
+          balloon.collisionSphere.visible = collisionBoxesVisible;
+        }
+      });
       toggleHUDKey('key-z', collisionBoxesVisible);
       break;
 
@@ -1333,4 +1342,3 @@ function toggleHUDKey(elementId, isActive) {
 }
 
 init();
-animate(); // Devia estar no init???
