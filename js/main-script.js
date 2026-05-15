@@ -20,6 +20,8 @@ const CONFIG = {
     SPAWN_X_MAX: 40,
     SPAWN_Z_MIN: -40,
     SPAWN_Z_MAX: 40,
+    SPAWN_CLEARANCE: 2,
+    SPAWN_MAX_ATTEMPTS_PER_BALLOON: 50,
     POP_DURATION_SECONDS: 0.8,
   },
   DRONE: {
@@ -145,6 +147,54 @@ const CAMERA_KEY_IDS = {
 
 function setActiveCamera(nextCamera) {
   cameraManager.active = nextCamera;
+}
+
+function updateCameraProjections() {
+  const aspect = window.innerWidth / window.innerHeight;
+
+  const updateOrthographicCamera = (camera, halfSize) => {
+    if (!camera) return;
+    camera.left = -halfSize * aspect;
+    camera.right = halfSize * aspect;
+    camera.top = halfSize;
+    camera.bottom = -halfSize;
+    camera.updateProjectionMatrix();
+  };
+
+  updateOrthographicCamera(cameraManager.topCamera, CONFIG.CAMERA.ORTHOGRAPHIC_DEFAULT_HALF_SIZE);
+  updateOrthographicCamera(cameraManager.lateralCamera, CONFIG.CAMERA.ORTHOGRAPHIC_ZOOMED_OUT_HALF_SIZE);
+  updateOrthographicCamera(cameraManager.frontalCamera, CONFIG.CAMERA.ORTHOGRAPHIC_ZOOMED_OUT_HALF_SIZE);
+  updateOrthographicCamera(cameraManager.orthogonalCamera, CONFIG.CAMERA.ORTHOGRAPHIC_ZOOMED_OUT_HALF_SIZE);
+
+  if (cameraManager.perspectiveCamera) {
+    cameraManager.perspectiveCamera.aspect = aspect;
+    cameraManager.perspectiveCamera.updateProjectionMatrix();
+  }
+
+  if (cameraManager.mobileCamera) {
+    cameraManager.mobileCamera.aspect = aspect;
+    cameraManager.mobileCamera.updateProjectionMatrix();
+  }
+}
+
+function isBalloonSpawnPositionValid(position, balloonRadius) {
+  if (!position) return false;
+
+  const clearance = CONFIG.BALLOON.SPAWN_CLEARANCE;
+  const balloonCenter = position.clone();
+
+  for (const existingBalloon of balloons) {
+    if (!existingBalloon) continue;
+    const existingPos = new THREE.Vector3();
+    existingBalloon.getWorldPosition(existingPos);
+    const existingRadius = existingBalloon._collisionRadius || CONFIG.COLLISION.BALLOON_RADIUS_FALLBACK;
+    const minDistanceBetweenBalloons = existingRadius + balloonRadius + clearance;
+    if (existingPos.distanceTo(balloonCenter) < minDistanceBetweenBalloons) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 ///////////////////////
@@ -645,14 +695,30 @@ function addRandomBalloons() {
 
   for (let i = 0; i < numberOfBalloons; i++) {
     const balloon = new Balloon();
-    
-    const randomX = THREE.MathUtils.randFloat(CONFIG.BALLOON.SPAWN_X_MIN, CONFIG.BALLOON.SPAWN_X_MAX);
-    const randomY = (Math.random() * CONFIG.BALLOON.SPAWN_Y_VARIATION) + fixedY;
-    const randomZ = THREE.MathUtils.randFloat(CONFIG.BALLOON.SPAWN_Z_MIN, CONFIG.BALLOON.SPAWN_Z_MAX);
+    const maxAttempts = CONFIG.BALLOON.SPAWN_MAX_ATTEMPTS_PER_BALLOON;
 
-    balloon.position.set(randomX, randomY, randomZ);
-    scene.add(balloon);
-    balloons.push(balloon);
+    let placed = false;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const randomX = THREE.MathUtils.randFloat(CONFIG.BALLOON.SPAWN_X_MIN, CONFIG.BALLOON.SPAWN_X_MAX);
+      const randomY = (Math.random() * CONFIG.BALLOON.SPAWN_Y_VARIATION) + fixedY;
+      const randomZ = THREE.MathUtils.randFloat(CONFIG.BALLOON.SPAWN_Z_MIN, CONFIG.BALLOON.SPAWN_Z_MAX);
+      const candidatePosition = new THREE.Vector3(randomX, randomY, randomZ);
+
+      if (!isBalloonSpawnPositionValid(candidatePosition, balloon._collisionRadius)) {
+        continue;
+      }
+
+      balloon.position.copy(candidatePosition);
+      scene.add(balloon);
+      balloons.push(balloon);
+      placed = true;
+      break;
+    }
+
+    if (!placed) {
+      console.warn('Could not find a non-overlapping spawn position for a balloon.');
+    }
   }
 }
 
@@ -796,6 +862,8 @@ function setupCameras() {
     cameraManager.helpers.forEach((helper) => {
       scene.add(helper);
     });
+
+    updateCameraProjections();
 }
 
 function canLandDrone() {
@@ -917,16 +985,12 @@ function updatePoppingBalloons(delta) {
     const s = Math.max(0, 1 - t);
     b.scale.set(s, s, s);
     if (t >= 1) {
-      // cleanup axes helpers references
       b.traverse((node) => {
         if (node instanceof THREE.AxesHelper) {
           const idx = axesHelpers.indexOf(node);
           if (idx !== -1) axesHelpers.splice(idx, 1);
         }
       });
-      // remove from scene and array
-      if (b.parent) b.parent.remove(b);
-      balloons.splice(i, 1);
       // dispose geometries/materials to free memory
       b.traverse((node) => {
         if (node.isMesh) {
@@ -937,6 +1001,9 @@ function updatePoppingBalloons(delta) {
           }
         }
       });
+      // remove from scene and array after cleanup is complete
+      if (b.parent) b.parent.remove(b);
+      balloons.splice(i, 1);
     }
   }
 
@@ -1056,8 +1123,7 @@ function onResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 
   if (window.innerHeight > 0 && window.innerWidth > 0) {
-    cameraManager.active.aspect = window.innerWidth / window.innerHeight;
-    cameraManager.active.updateProjectionMatrix();
+    updateCameraProjections();
   }
 }
 
