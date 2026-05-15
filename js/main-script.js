@@ -26,6 +26,7 @@ const CONFIG = {
   },
   DRONE: {
     MOVE_SPEED: 100,
+    // Note: yaw does not have a limit since it is cyclical
     YAW_SPEED: Math.PI,
     PITCH_SPEED: Math.PI / 2,
     PITCH_LIMIT_MIN: -Math.PI / 6,
@@ -564,11 +565,6 @@ class Drone extends THREE.Group {
     this.rotation.x = Math.min(Math.max(newPitch, this._pitchLimitMin), this._pitchLimitMax);
   }
 
-  setDronePos(x, y, z) {
-    // set the object's local position
-    this.position.set(x, y, z);
-  }
-
   landDrone() {
     this.position.copy(this.getStartPos());
     this.rotation.set(0, 0, 0);
@@ -825,7 +821,8 @@ function setupCameras() {
       1,
       1000
     );
-    cameraManager.orthogonalCamera.position.set(-200, 10, 200);
+    // Note: orthogonal and perspective cameras sit in the same position
+    cameraManager.orthogonalCamera.position.set(-100, 20, 100);
     cameraManager.orthogonalCamera.lookAt(scene.position);
 
     cameraManager.perspectiveCamera = new THREE.PerspectiveCamera(70, aspect, 1, 1000);
