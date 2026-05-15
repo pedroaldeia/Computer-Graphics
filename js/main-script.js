@@ -205,10 +205,10 @@ class Drone extends THREE.Group {
     this._proppellerWidth = this._proppellerLength / 6;
     this._proppellerHeight = this._proppellerLength / 20;
 
-    // approximate collision sphere radius
-    // depends on guard radius
-    this._baseCollisionRadius = this._guardRadius;
-    this._collisionRadius = this._baseCollisionRadius * watchScale; 
+    // per-rotor collision sphere base radius (proportional to rotor size)
+    // scaled up 10x to increase collision area as requested
+    this._baseRotorCollisionRadius = this._rotorRadius * 1.25 * 15;
+    this.collisionSpheres = []; // will be populated when rotors are created
     this.scale.set(watchScale, watchScale, watchScale);
     
     this._addBody();
@@ -231,6 +231,10 @@ class Drone extends THREE.Group {
     this._targetFold = 1; // 0 = not folding, 1 = folding
     this._foldScale = 0.65; // how close to center when folded (percentage)
     this._foldSpeed = 0.08; // per frame progress step
+    // extra inward translation factor applied when folding (fraction of original arm length)
+    this._foldExtraFactor = 1.3; // extra inward movement factor
+    // target scale for arms when fully folded (e.g., 0.5 for 50% size)
+    this._armFoldScaleTarget = 0.5;
   }
 
   getStartPos() {
@@ -281,9 +285,18 @@ class Drone extends THREE.Group {
   }
   
   _addRotorExtension() {
-    const rotorExtensions = [0, 1, 2, 3].map(() => new THREE.Mesh(
-      new THREE.BoxGeometry(this._extensionX, this._extensionY, this._extensionZ),
-      new THREE.MeshBasicMaterial({ color: 0xB4B2A9 })));
+    const rotorExtensions = [0, 1, 2, 3].map(() => {
+      const group = new THREE.Group();
+      const armMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(this._extensionX, this._extensionY, this._extensionZ),
+        new THREE.MeshBasicMaterial({ color: 0xB4B2A9 })
+      );
+      armMesh.name = 'armMesh';
+      group.add(armMesh);
+      group.userData = group.userData || {};
+      group.userData.armMesh = armMesh;
+      return group;
+    });
 
     this._addGuards(rotorExtensions);
     this._addRotorConnections(rotorExtensions);
@@ -339,6 +352,19 @@ class Drone extends THREE.Group {
     this.rotors.forEach((rotor, index) => {
       rotor.rotation.x = Math.PI / 2;
       this._addProppellers(rotor);
+
+      // add an (invisible) collision sphere centered on the rotor
+      const baseR = this._baseRotorCollisionRadius || (this._rotorRadius * 1.25 * 10);
+      const sphereGeom = new THREE.SphereGeometry(baseR, 8, 8);
+      const sphereMat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+      const collisionSphere = new THREE.Mesh(sphereGeom, sphereMat);
+      collisionSphere.visible = false; // visible for debugging collision areas
+      collisionSphere.userData = collisionSphere.userData || {};
+      collisionSphere.userData.baseRadius = baseR; // local (unscaled) radius
+      // add the sphere as a child of the rotor so it follows rotor transforms
+      rotor.add(collisionSphere);
+      this.collisionSpheres.push(collisionSphere);
+
       rotor.position.set(this._connectionX / 2 + this._rotorRadius / 2, 0, 0);
       connections[index].add(rotor);
     });
@@ -383,7 +409,19 @@ class Drone extends THREE.Group {
     this.rotorExtensions.forEach((ext) => {
       const orig = ext.userData.originalPosition;
       if (orig) {
-        ext.position.copy(orig.clone().multiplyScalar(scale));
+        // base folded position (scaled toward center)
+        const basePos = orig.clone().multiplyScalar(scale);
+        // extra inward translation toward the center along the same direction
+        const extra = (this._foldExtraFactor || 0) * orig.length() * this._foldProgress;
+        const inward = orig.clone().normalize().multiplyScalar(-extra);
+        ext.position.copy(basePos.add(inward));
+
+        // scale the arm mesh only (not the rotor/guards). interpolate from 1 -> targetScale
+        const armTarget = (this._armFoldScaleTarget != null) ? this._armFoldScaleTarget : 0.5;
+        const armScale = 1 - this._foldProgress * (1 - armTarget);
+        if (ext.userData && ext.userData.armMesh) {
+          ext.userData.armMesh.scale.set(armScale, armScale, armScale);
+        }
       }
     });
   }
@@ -573,9 +611,8 @@ function setWatchScale(scale) {
   }
   if (drone) {
     drone.scale.set(scale, scale, scale);
-    if (drone._baseCollisionRadius != null) {
-      drone._collisionRadius = drone._baseCollisionRadius * scale;
-    }
+    // per-rotor collision spheres scale together with the drone group,
+    // so no need to update separate collision radius here.
   }
   canLandDroneDistance = watchScale * 10;
 }
@@ -696,10 +733,6 @@ function canLandDrone() {
 function checkCollisions() {
     if (!drone || balloons.length === 0) return;
 
-    const dronePos = new THREE.Vector3();
-    drone.getWorldPosition(dronePos);
-    const droneRadius = drone._collisionRadius || 12;
-
     const collided = [];
 
     for (let i = balloons.length - 1; i >= 0; i--) {
@@ -709,10 +742,35 @@ function checkCollisions() {
       const bPos = new THREE.Vector3();
       b.getWorldPosition(bPos);
       const bRadius = b._collisionRadius || 7;
-      const rSum = droneRadius + bRadius;
-      if (dronePos.distanceToSquared(bPos) <= rSum * rSum) {
-        collided.push(b);
+
+      let hit = false;
+
+      // If per-rotor collision spheres exist, check against each one
+      if (drone.collisionSpheres && drone.collisionSpheres.length > 0) {
+        for (let sIdx = 0; sIdx < drone.collisionSpheres.length; sIdx++) {
+          const s = drone.collisionSpheres[sIdx];
+          if (!s) continue;
+          const sPos = new THREE.Vector3();
+          s.getWorldPosition(sPos);
+          // world radius = baseRadius * drone scale (assumes uniform scale)
+          const sBase = (s.userData && s.userData.baseRadius) || (drone._rotorRadius * 1.25 * 10);
+          const sRadius = sBase * (drone.scale ? drone.scale.x : 1);
+          const rSum = sRadius + bRadius;
+          if (sPos.distanceToSquared(bPos) <= rSum * rSum) {
+            hit = true;
+            break;
+          }
+        }
+      } else {
+        // fallback to single-sphere approach (older code)
+        const dronePos = new THREE.Vector3();
+        drone.getWorldPosition(dronePos);
+        const droneRadius = (drone._collisionRadius != null) ? drone._collisionRadius : 12;
+        const rSum = droneRadius + bRadius;
+        if (dronePos.distanceToSquared(bPos) <= rSum * rSum) hit = true;
       }
+
+      if (hit) collided.push(b);
     }
 
     if (collided.length > 0) handleCollisions(collided);
