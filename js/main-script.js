@@ -36,6 +36,7 @@ let cameraHelpers = [];
 let axesHelpers = [];
 let helpersVisible = true;
 let wireframeActive = false;
+let collisionBoxesVisible = false;
 let infoHudVisible = true;
 let paramsHudVisible = true;
 
@@ -127,7 +128,7 @@ class SmartWatch extends THREE.Group {
   _addWatch() {
     const watch = new THREE.Mesh(
       new THREE.BoxGeometry(this.watchX, this.watchY, this.watchZ),
-      new THREE.MeshBasicMaterial({ color: 0xB2BEB5 })
+      new THREE.MeshMatcapMaterial({ color: 0xB2BEB5 })
     );
     this.add(watch);
 
@@ -139,7 +140,7 @@ class SmartWatch extends THREE.Group {
       bracelet.scale.set(this.braceletScale, this.braceletScale, this.braceletScale);
       bracelet.traverse((node) => {
       if (node.isMesh) {
-        node.material = new THREE.MeshBasicMaterial({
+        node.material = new THREE.MeshMatcapMaterial({
           color: 0x536267,
         });
       }
@@ -158,8 +159,11 @@ class Drone extends THREE.Group {
     super();
 
     // Geometry constants and grouped dimensions
+    // The dimensions all depend somewhat on another part of the drone, except for _bodyY.
+    // We did this because we found it more readable, since it puts the dimensions into perspective
+    // rather than raw numbers.
     this._bodyY = 4;
-    this._landingHeight = this._bodyY * 3 / 4;
+    this._landingHeight = this._bodyY / 4 * 3;
     this._bodyX = this._bodyY * 5;
     this._bodyZ = this._bodyX;
 
@@ -207,7 +211,7 @@ class Drone extends THREE.Group {
 
     // per-rotor collision sphere base radius (proportional to rotor size)
     // scaled up 10x to increase collision area as requested
-    this._baseRotorCollisionRadius = this._rotorRadius * 1.25 * 15;
+    this._baseRotorCollisionRadius = this._guardRadius;
     this.collisionSpheres = []; // will be populated when rotors are created
     this.scale.set(watchScale, watchScale, watchScale);
     
@@ -245,14 +249,14 @@ class Drone extends THREE.Group {
   _addBody() {
     const base = new THREE.Mesh(
       new THREE.BoxGeometry(this._bodyX, this._bodyY, this._bodyZ),
-      new THREE.MeshBasicMaterial({ color: 0xF1EFE8 }));
+      new THREE.MeshMatcapMaterial({ color: 0xF1EFE8 }));
     this.add(base);
   }
 
   _addTakeoffButton() {
     const botao = new THREE.Mesh(
       new THREE.BoxGeometry(this._takeoffButtonX, this._takeoffButtonY, this._takeoffButtonZ),
-      new THREE.MeshBasicMaterial({ color: 0xE24B4A }));
+      new THREE.MeshMatcapMaterial({ color: 0xE24B4A }));
     botao.position.set(0, 2.75, 8);
     this.add(botao);
   }
@@ -260,7 +264,7 @@ class Drone extends THREE.Group {
   _addCameraSupport() {
     const suporte = new THREE.Mesh(
       new THREE.BoxGeometry(this._cameraSupportX, this._cameraSupportY, this._cameraSupportZ),
-      new THREE.MeshBasicMaterial({ color: 0x185FA5 }));
+      new THREE.MeshMatcapMaterial({ color: 0x185FA5 }));
     suporte.position.set(0, 2.5, -8);
     this.add(suporte);
   }
@@ -268,7 +272,7 @@ class Drone extends THREE.Group {
   _addLens() {
     const lens = new THREE.Mesh(
       new THREE.CylinderGeometry(this._lensRadiusTop, this._lensRadiusBottom, this._lensHeight, this._lensRadialSegments),
-      new THREE.MeshBasicMaterial({ color: 0x378ADD }));
+      new THREE.MeshMatcapMaterial({ color: 0x378ADD }));
     lens.position.set(0, 3, -8);
     this.add(lens);
 
@@ -289,7 +293,7 @@ class Drone extends THREE.Group {
       const group = new THREE.Group();
       const armMesh = new THREE.Mesh(
         new THREE.BoxGeometry(this._extensionX, this._extensionY, this._extensionZ),
-        new THREE.MeshBasicMaterial({ color: 0xB4B2A9 })
+        new THREE.MeshMatcapMaterial({ color: 0xB4B2A9 })
       );
       armMesh.name = 'armMesh';
       group.add(armMesh);
@@ -321,7 +325,7 @@ class Drone extends THREE.Group {
   _addGuards(rotorExtensions) {
     const guards = [0, 1, 2, 3].map(() => new THREE.Mesh(
       new THREE.TorusGeometry(this._guardRadius, this._guardTubeRadius, this._guardRadialSegments, this._guardTubularSegments),
-      new THREE.MeshBasicMaterial({ color: 0xB4B2A9 })));
+      new THREE.MeshMatcapMaterial({ color: 0xB4B2A9 })));
 
     guards.forEach((guard, index) => {
       guard.position.set(this._extensionX / 2 + this._guardRadius, 0, 0);
@@ -333,7 +337,7 @@ class Drone extends THREE.Group {
   _addRotorConnections(rotorExtensions) {
     const connections = [0, 1, 2, 3].map(() => new THREE.Mesh(
       new THREE.BoxGeometry(this._connectionX, this._connectionY, this._connectionZ),
-      new THREE.MeshBasicMaterial({ color: 0x888780 })));
+      new THREE.MeshMatcapMaterial({ color: 0x888780 })));
 
     this._addRotors(connections);
 
@@ -347,21 +351,18 @@ class Drone extends THREE.Group {
   _addRotors(connections) {
     this.rotors = [0, 1, 2, 3].map(() => new THREE.Mesh(
       new THREE.CylinderGeometry(this._rotorRadius, this._rotorRadius, this._rotorHeight, this._rotorRadialSegments),
-      new THREE.MeshBasicMaterial({ color: 0x444441 })));
+      new THREE.MeshMatcapMaterial({ color: 0x444441 })));
 
     this.rotors.forEach((rotor, index) => {
       rotor.rotation.x = Math.PI / 2;
       this._addProppellers(rotor);
 
       // add an (invisible) collision sphere centered on the rotor
-      const baseR = this._baseRotorCollisionRadius || (this._rotorRadius * 1.25 * 10);
-      const sphereGeom = new THREE.SphereGeometry(baseR, 8, 8);
+      const baseR = this._baseRotorCollisionRadius;
+      const sphereGeom = new THREE.SphereGeometry(this._baseRotorCollisionRadius, 8, 8);
       const sphereMat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
       const collisionSphere = new THREE.Mesh(sphereGeom, sphereMat);
       collisionSphere.visible = false; // visible for debugging collision areas
-      collisionSphere.userData = collisionSphere.userData || {};
-      collisionSphere.userData.baseRadius = baseR; // local (unscaled) radius
-      // add the sphere as a child of the rotor so it follows rotor transforms
       rotor.add(collisionSphere);
       this.collisionSpheres.push(collisionSphere);
 
@@ -373,7 +374,7 @@ class Drone extends THREE.Group {
   _addProppellers(rotor) {
     const proppellers = [0, 1, 2, 3].map(() => new THREE.Mesh(
       new THREE.BoxGeometry(this._proppellerLength, this._proppellerHeight, this._proppellerWidth),
-      new THREE.MeshBasicMaterial({ color: 0x2C2C2A })));
+      new THREE.MeshMatcapMaterial({ color: 0x2C2C2A })));
 
     proppellers.forEach((proppeller, index) => {
       proppeller.position.set(
@@ -550,6 +551,7 @@ class Baloon extends THREE.Group {
     this._addBody();
     this._addNode();
     this._addStrip();
+    this._addCollisionSphere();
     this.scale.set(balloonScale, balloonScale, balloonScale);
     this._collisionRadius = this._baseBodyRadius * balloonScale; // matches SphereGeometry radius in _addBody()
   }
@@ -557,7 +559,7 @@ class Baloon extends THREE.Group {
   _addBody() {
     const body = new THREE.Mesh(
       new THREE.SphereGeometry(this._bodyRadius, this._bodyRadialSegments, this._bodyHeightSegments),
-      new THREE.MeshBasicMaterial({ color: 0xFF4444 })
+      new THREE.MeshMatcapMaterial({ color: 0xFF4444 })
     );
     this.add(body);
   }
@@ -565,7 +567,7 @@ class Baloon extends THREE.Group {
   _addNode() {
     const node = new THREE.Mesh(
       new THREE.ConeGeometry(this._nodeRadius, this._nodeHeight, this._nodeRadialSegments),
-      new THREE.MeshBasicMaterial({ color: 0xCC0000 })
+      new THREE.MeshMatcapMaterial({ color: 0xCC0000 })
     );
     node.position.y = this._nodeOffsetY;
     this.add(node);
@@ -574,11 +576,19 @@ class Baloon extends THREE.Group {
   _addStrip() {
     const strip = new THREE.Mesh(
       new THREE.CylinderGeometry(this._stripRadiusTop, this._stripRadiusBottom, this._stripHeight, this._stripRadialSegments),
-      new THREE.MeshBasicMaterial({ color: 0xEEEEEE })
+      new THREE.MeshMatcapMaterial({ color: 0xEEEEEE })
     );
 
     strip.position.y = this._stripOffsetY; 
     this.add(strip);
+  }
+
+  _addCollisionSphere() {
+    const sphereGeom = new THREE.SphereGeometry(this._bodyRadius, 8, 8);
+    const sphereMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
+    this.collisionSphere = new THREE.Mesh(sphereGeom, sphereMat);
+    this.collisionSphere.visible = false; // hidden by default
+    this.add(this.collisionSphere);
   }
 
   setScaleFactor(scale) {
@@ -666,23 +676,23 @@ function setupCameras() {
     const aspect = window.innerWidth / window.innerHeight;
 
     topCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
-    topCamera.position.set(0, 50, 0);
+    topCamera.position.set(0, 200, 0);
     topCamera.lookAt(scene.position);
     
     lateralCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
-    lateralCamera.position.set(0, 0, 50);
+    lateralCamera.position.set(0, 0, 200);
     lateralCamera.lookAt(scene.position);
     
     frontalCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
-    frontalCamera.position.set(50, 0, 0);
+    frontalCamera.position.set(200, 0, 0);
     frontalCamera.lookAt(scene.position);
     
     orthogonalCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
-    orthogonalCamera.position.set(-50, 10, 50);
+    orthogonalCamera.position.set(-200, 10, 200);
     orthogonalCamera.lookAt(scene.position);
 
     perspectiveCamera = new THREE.PerspectiveCamera(70, aspect, 1, 1000);
-    perspectiveCamera.position.set(-50, 10, 50);
+    perspectiveCamera.position.set(-100, 20, 100);
     perspectiveCamera.lookAt(scene.position);
 
     camera = perspectiveCamera;
@@ -1060,6 +1070,23 @@ function onKeyDown(e) {
       });
       toggleHUDKey('key-7', wireframeActive);
       break;
+
+    // Z - toggle collision boxes
+    case 90: case 122:
+      collisionBoxesVisible = !collisionBoxesVisible;
+      if (drone && drone.collisionSpheres) {
+        drone.collisionSpheres.forEach((sphere) => {
+          sphere.visible = collisionBoxesVisible;
+              balloons.forEach((balloon) => {
+                if (balloon && balloon.collisionSphere) {
+                  balloon.collisionSphere.visible = collisionBoxesVisible;
+                }
+              });
+        });
+      }
+      toggleHUDKey('key-z', collisionBoxesVisible);
+      break;
+
     // Q - fold/unfold drone arms
     case 81: case 113:
         drone.handleArmsFold();
@@ -1168,6 +1195,7 @@ function initializeHUD() {
   toggleHUDKey('key-5', true);
   toggleHUDKey('key-h', helpersVisible);
   toggleHUDKey('key-7', false);
+  toggleHUDKey('key-z', collisionBoxesVisible);
 }
 
 function initializeInfoHUD() {
