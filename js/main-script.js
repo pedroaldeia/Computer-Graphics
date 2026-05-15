@@ -6,6 +6,44 @@ const HEIGHT = window.innerHeight;
 const WIDTH = window.innerWidth;
 const BACKGROUND = new THREE.Color(0x404040);
 
+const CONFIG = {
+  WATCH: {
+    DEFAULT_SCALE: 1,
+    LAND_DISTANCE_MULTIPLIER: 10,
+  },
+  BALLOON: {
+    DEFAULT_SCALE: 1,
+    COUNT: 4,
+    SPAWN_Y_BASE: 35,
+    SPAWN_Y_VARIATION: 20,
+    SPAWN_X_MIN: -40,
+    SPAWN_X_MAX: 40,
+    SPAWN_Z_MIN: -40,
+    SPAWN_Z_MAX: 40,
+    POP_DURATION_SECONDS: 0.8,
+  },
+  DRONE: {
+    MOVE_SPEED: 100,
+    YAW_SPEED: Math.PI,
+    PITCH_SPEED: Math.PI / 2,
+    PITCH_LIMIT_MIN: -Math.PI / 6,
+    PITCH_LIMIT_MAX: Math.PI / 6,
+    ROTOR_SPEED: 0.4,
+  },
+  CAMERA: {
+    ORTHOGRAPHIC_DEFAULT_HALF_SIZE: 50,
+    ORTHOGRAPHIC_ZOOMED_OUT_HALF_SIZE: 90,
+    MOBILE_FOV: 70,
+    MOBILE_NEAR: 1,
+    MOBILE_FAR: 1000,
+    MOBILE_POSITION: { x: 0, y: 5, z: -8 },
+  },
+  COLLISION: {
+    BALLOON_RADIUS_FALLBACK: 7,
+    DRONE_RADIUS_FALLBACK: 12,
+  },
+};
+
 const cameraManager = {
   topCamera: null,
   lateralCamera: null,
@@ -27,7 +65,7 @@ const cameraManager = {
 
 let renderer, scene;
 
-let smartWatch, drone, baloon;
+let smartWatch, drone;
 // Array to track balloons for collision checks
 const balloons = [];
 
@@ -92,9 +130,9 @@ document.body.appendChild( stats.dom );
 stats.dom.style.transform = 'scale(1.5)';
 stats.dom.style.transformOrigin = 'top left';
 
-let watchScale = 1;
-let balloonScale = 1;
-let canLandDroneDistance = watchScale*10;
+let watchScale = CONFIG.WATCH.DEFAULT_SCALE;
+let balloonScale = CONFIG.BALLOON.DEFAULT_SCALE;
+let canLandDroneDistance = watchScale * CONFIG.WATCH.LAND_DISTANCE_MULTIPLIER;
 
 const CAMERA_KEY_IDS = {
   Digit1: 'key-1', Numpad1: 'key-1',
@@ -107,7 +145,6 @@ const CAMERA_KEY_IDS = {
 
 function setActiveCamera(nextCamera) {
   cameraManager.active = nextCamera;
-  return;
 }
 
 ///////////////////////
@@ -206,9 +243,9 @@ class Drone extends THREE.Group {
     this._rotorRadialSegments = 32;
 
     // Proppelers: depend on guardRadius
-    this._proppellerLength = this._guardRadius * 2 / 3;
-    this._proppellerWidth = this._proppellerLength / 6;
-    this._proppellerHeight = this._proppellerLength / 20;
+    this._propellerLength = this._guardRadius * 2 / 3;
+    this._propellerWidth = this._propellerLength / 6;
+    this._propellerHeight = this._propellerLength / 20;
 
     // per-rotor collision sphere base radius (proportional to rotor size)
     // scaled up 10x to increase collision area as requested
@@ -224,12 +261,12 @@ class Drone extends THREE.Group {
     
     // set initial position from getStartPos (returns a Vector3)
     this.position.copy(this.getStartPos());
-    this._moveSpeed = 100; // units per second (tweakable)
-    this._rotationSpeed = Math.PI; // radians per second (tweakable)
-    this._pitchSpeed = Math.PI / 2; // radians per second (tweakable)
-    this._pitchLimitMin = -Math.PI / 6; // -30 degrees
-    this._pitchLimitMax = Math.PI / 6;  // +30 degrees
-    this._rotorSpeed = 0.4; // radians per frame-ish, used in rotateRotors()
+    this._moveSpeed = CONFIG.DRONE.MOVE_SPEED; // units per second (tweakable)
+    this._rotationSpeed = CONFIG.DRONE.YAW_SPEED; // radians per second (tweakable)
+    this._pitchSpeed = CONFIG.DRONE.PITCH_SPEED; // radians per second (tweakable)
+    this._pitchLimitMin = CONFIG.DRONE.PITCH_LIMIT_MIN; // -30 degrees
+    this._pitchLimitMax = CONFIG.DRONE.PITCH_LIMIT_MAX;  // +30 degrees
+    this._rotorSpeed = CONFIG.DRONE.ROTOR_SPEED; // radians per frame-ish, used in rotateRotors()
 
     // Folding state for rotor extensions (arms)
     this._foldProgress = 0; // 0 = unfolded, 1 = folded
@@ -277,14 +314,19 @@ class Drone extends THREE.Group {
     lens.position.set(0, 3, -8);
     this.add(lens);
 
-    this.mobileCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
-    this.mobileCamera.position.set(0, 5, -8);
+    this.mobileCamera = new THREE.PerspectiveCamera(
+      CONFIG.CAMERA.MOBILE_FOV,
+      window.innerWidth / window.innerHeight,
+      CONFIG.CAMERA.MOBILE_NEAR,
+      CONFIG.CAMERA.MOBILE_FAR
+    );
+    this.mobileCamera.position.set(
+      CONFIG.CAMERA.MOBILE_POSITION.x,
+      CONFIG.CAMERA.MOBILE_POSITION.y,
+      CONFIG.CAMERA.MOBILE_POSITION.z
+    );
     this.add(this.mobileCamera);
     cameraManager.mobileCamera = this.mobileCamera;
-
-    const mobileHelper = new THREE.CameraHelper(this.mobileCamera);
-    scene.add(mobileHelper);
-    cameraManager.helpers.push(mobileHelper);
   }
   
   _addRotorExtension() {
@@ -354,7 +396,7 @@ class Drone extends THREE.Group {
 
     this.rotors.forEach((rotor, index) => {
       rotor.rotation.x = Math.PI / 2;
-      this._addProppellers(rotor);
+      this._addPropellers(rotor);
 
       // add an (invisible) collision sphere centered on the rotor
       const baseR = this._baseRotorCollisionRadius;
@@ -372,19 +414,19 @@ class Drone extends THREE.Group {
     });
   }
 
-  _addProppellers(rotor) {
-    const proppellers = [0, 1, 2, 3].map(() => new THREE.Mesh(
-      new THREE.BoxGeometry(this._proppellerLength, this._proppellerHeight, this._proppellerWidth),
+  _addPropellers(rotor) {
+    const propellers = [0, 1, 2, 3].map(() => new THREE.Mesh(
+      new THREE.BoxGeometry(this._propellerLength, this._propellerHeight, this._propellerWidth),
       new THREE.MeshMatcapMaterial({ color: 0x2C2C2A })));
 
-    proppellers.forEach((proppeller, index) => {
-      proppeller.position.set(
-        (this._rotorRadius + this._proppellerLength / 2) * Math.cos(index * Math.PI / 2),
+    propellers.forEach((propeller, index) => {
+      propeller.position.set(
+        (this._rotorRadius + this._propellerLength / 2) * Math.cos(index * Math.PI / 2),
         0,
-        (this._rotorRadius + this._proppellerLength / 2) * Math.sin(index * Math.PI / 2)
+        (this._rotorRadius + this._propellerLength / 2) * Math.sin(index * Math.PI / 2)
       );
-      proppeller.rotation.y = index * (Math.PI / 2);
-      rotor.add(proppeller);
+      propeller.rotation.y = index * (Math.PI / 2);
+      rotor.add(propeller);
     });
   }
  
@@ -528,7 +570,7 @@ class Drone extends THREE.Group {
   }
 }
 
-class Baloon extends THREE.Group {
+class Balloon extends THREE.Group {
   constructor() {
     super();
 
@@ -601,15 +643,15 @@ class Baloon extends THREE.Group {
 }
 
 function addRandomBalloons() {
-  const numberOfBalloons = 4;
-  const fixedY = 35;
+  const numberOfBalloons = CONFIG.BALLOON.COUNT;
+  const fixedY = CONFIG.BALLOON.SPAWN_Y_BASE;
 
   for (let i = 0; i < numberOfBalloons; i++) {
-    const balloon = new Baloon();
+    const balloon = new Balloon();
     
-    const randomX = (Math.random() * 80) - 40; // [-40, 40]
-    const randomY = (Math.random() * 20) + fixedY; // [fixedY, fixedY + 20]
-    const randomZ = (Math.random() * 80) - 40;
+    const randomX = THREE.MathUtils.randFloat(CONFIG.BALLOON.SPAWN_X_MIN, CONFIG.BALLOON.SPAWN_X_MAX);
+    const randomY = (Math.random() * CONFIG.BALLOON.SPAWN_Y_VARIATION) + fixedY;
+    const randomZ = THREE.MathUtils.randFloat(CONFIG.BALLOON.SPAWN_Z_MIN, CONFIG.BALLOON.SPAWN_Z_MAX);
 
     balloon.position.set(randomX, randomY, randomZ);
     scene.add(balloon);
@@ -624,10 +666,9 @@ function setWatchScale(scale) {
   }
   if (drone) {
     drone.scale.set(scale, scale, scale);
-    // per-rotor collision spheres scale together with the drone group,
-    // so no need to update separate collision radius here.
+    // rotor collision spheres scale together with the drone group
   }
-  canLandDroneDistance = watchScale * 10;
+  canLandDroneDistance = watchScale * CONFIG.WATCH.LAND_DISTANCE_MULTIPLIER;
 }
 
 function setBalloonScale(scale) {
@@ -677,20 +718,50 @@ function createScene() {
 //////////////////////
 function setupCameras() {
     const aspect = window.innerWidth / window.innerHeight;
+    const orthoDefaultHalfSize = CONFIG.CAMERA.ORTHOGRAPHIC_DEFAULT_HALF_SIZE;
+    const orthoZoomedOutHalfSize = CONFIG.CAMERA.ORTHOGRAPHIC_ZOOMED_OUT_HALF_SIZE;
 
-    cameraManager.topCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
+    cameraManager.topCamera = new THREE.OrthographicCamera(
+      -orthoDefaultHalfSize * aspect,
+      orthoDefaultHalfSize * aspect,
+      orthoDefaultHalfSize,
+      -orthoDefaultHalfSize,
+      1,
+      1000
+    );
     cameraManager.topCamera.position.set(0, 200, 0);
     cameraManager.topCamera.lookAt(scene.position);
     
-    cameraManager.lateralCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
-    cameraManager.lateralCamera.position.set(0, 0, 200);
+    cameraManager.lateralCamera = new THREE.OrthographicCamera(
+      -orthoZoomedOutHalfSize * aspect,
+      orthoZoomedOutHalfSize * aspect,
+      orthoZoomedOutHalfSize,
+      -orthoZoomedOutHalfSize,
+      1,
+      1000
+    );
+    cameraManager.lateralCamera.position.set(0, 0, 800);
     cameraManager.lateralCamera.lookAt(scene.position);
     
-    cameraManager.frontalCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
+    cameraManager.frontalCamera = new THREE.OrthographicCamera(
+      -orthoZoomedOutHalfSize * aspect,
+      orthoZoomedOutHalfSize * aspect,
+      orthoZoomedOutHalfSize,
+      -orthoZoomedOutHalfSize,
+      1,
+      1000
+    );
     cameraManager.frontalCamera.position.set(200, 0, 0);
     cameraManager.frontalCamera.lookAt(scene.position);
     
-    cameraManager.orthogonalCamera = new THREE.OrthographicCamera(-50 * aspect, 50 * aspect, 50, -50, 1, 1000);
+    cameraManager.orthogonalCamera = new THREE.OrthographicCamera(
+      -orthoZoomedOutHalfSize * aspect,
+      orthoZoomedOutHalfSize * aspect,
+      orthoZoomedOutHalfSize,
+      -orthoZoomedOutHalfSize,
+      1,
+      1000
+    );
     cameraManager.orthogonalCamera.position.set(-200, 10, 200);
     cameraManager.orthogonalCamera.lookAt(scene.position);
 
@@ -703,6 +774,8 @@ function setupCameras() {
     ////////////////////////
     // CAMERA HELPERS
     ////////////////////////
+
+    cameraManager.helpers.length = 0;
 
     const topHelper = new THREE.CameraHelper(cameraManager.topCamera);
     const lateralHelper = new THREE.CameraHelper(cameraManager.lateralCamera);
@@ -717,6 +790,11 @@ function setupCameras() {
       orthogonalHelper,
       perspectiveHelper
     );
+
+    if (cameraManager.mobileCamera) {
+      const mobileHelper = new THREE.CameraHelper(cameraManager.mobileCamera);
+      cameraManager.helpers.push(mobileHelper);
+    }
 
     cameraManager.helpers.forEach((helper) => {
       scene.add(helper);
@@ -754,7 +832,7 @@ function checkCollisions() {
       if (b.userData && b.userData.popping) continue;
       const bPos = new THREE.Vector3();
       b.getWorldPosition(bPos);
-      const bRadius = b._collisionRadius || 7;
+      const bRadius = b._collisionRadius || CONFIG.COLLISION.BALLOON_RADIUS_FALLBACK;
 
       let hit = false;
 
@@ -778,7 +856,9 @@ function checkCollisions() {
         // fallback to single-sphere approach (older code)
         const dronePos = new THREE.Vector3();
         drone.getWorldPosition(dronePos);
-        const droneRadius = (drone._collisionRadius != null) ? drone._collisionRadius : 12;
+        const droneRadius = (drone._collisionRadius != null)
+          ? drone._collisionRadius
+          : CONFIG.COLLISION.DRONE_RADIUS_FALLBACK;
         const rSum = droneRadius + bRadius;
         if (dronePos.distanceToSquared(bPos) <= rSum * rSum) hit = true;
       }
@@ -801,7 +881,7 @@ function handleCollisions(collidedArray) {
     b.userData = b.userData || {};
     b.userData.popping = true;
     b.userData.popProgress = 0;
-    b.userData.popDuration = 0.8; // seconds
+    b.userData.popDuration = CONFIG.BALLOON.POP_DURATION_SECONDS;
     // store original material opacities and enable transparency
     b.traverse((node) => {
       if (node.isMesh && node.material) {
@@ -828,7 +908,7 @@ function updatePoppingBalloons(delta) {
     const b = balloons[i];
     if (!b.userData || !b.userData.popping) continue;
     b.userData.popProgress += delta;
-    const dur = b.userData.popDuration || 0.8;
+    const dur = b.userData.popDuration || CONFIG.BALLOON.POP_DURATION_SECONDS;
     const t = Math.min(1, b.userData.popProgress / dur);
     // fade meshes and shrink group
     b.traverse((node) => {
