@@ -248,7 +248,6 @@ class Drone extends THREE.Group {
     this._propellerHeight = this._propellerLength / 20;
 
     // per-rotor collision sphere base radius (proportional to rotor size)
-    // scaled up 10x to increase collision area as requested
     this._baseRotorCollisionRadius = this._guardRadius;
     this.collisionSpheres = []; // will be populated when rotors are created
     this.scale.set(watchScale, watchScale, watchScale);
@@ -266,7 +265,7 @@ class Drone extends THREE.Group {
     this._pitchSpeed = CONFIG.DRONE.PITCH_SPEED; // radians per second (tweakable)
     this._pitchLimitMin = CONFIG.DRONE.PITCH_LIMIT_MIN; // -30 degrees
     this._pitchLimitMax = CONFIG.DRONE.PITCH_LIMIT_MAX;  // +30 degrees
-    this._rotorSpeed = CONFIG.DRONE.ROTOR_SPEED; // radians per frame-ish, used in rotateRotors()
+    this._rotorSpeed = CONFIG.DRONE.ROTOR_SPEED; // radians per second, used in rotateRotors(deltaTime)
 
     // Folding state for rotor extensions (arms)
     this._foldProgress = 0; // 0 = unfolded, 1 = folded
@@ -399,12 +398,11 @@ class Drone extends THREE.Group {
       this._addPropellers(rotor);
 
       // add an (invisible) collision sphere centered on the rotor
-      const baseR = this._baseRotorCollisionRadius;
       const sphereGeom = new THREE.SphereGeometry(this._baseRotorCollisionRadius, 8, 8);
       const sphereMat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
       const collisionSphere = new THREE.Mesh(sphereGeom, sphereMat);
       collisionSphere.userData = collisionSphere.userData || {};
-      collisionSphere.userData.baseRadius = baseR;
+      collisionSphere.userData.baseRadius = this._baseRotorCollisionRadius;
       collisionSphere.visible = false; // visible for debugging collision areas
       rotor.add(collisionSphere);
       this.collisionSpheres.push(collisionSphere);
@@ -470,15 +468,14 @@ class Drone extends THREE.Group {
     });
   }
 
-  rotateRotors() {
+  rotateRotors(deltaTime) {
 
-  // Só roda quando estiver totalmente aberto
+  // Only spins when totally unfolded
   if (this._foldProgress === 0 && this._targetFold === 0) {
 
-    this.rotors.forEach((rotor, index) => {
-
+    this.rotors.forEach(rotor => {
       // rotação no eixo Y local
-      rotor.rotation.y += this._rotorSpeed;
+      rotor.rotation.y += this._rotorSpeed * (deltaTime * 100 || 0);
 
     });
   }
@@ -999,7 +996,7 @@ function update() {
   }
   // Animate drone arms folding/unfolding
   drone.updateArms();
-  drone.rotateRotors();
+  drone.rotateRotors(delta);
   // Check collisions after movement and rotation
   checkCollisions();
   // Animate any balloons that are popping
@@ -1069,7 +1066,7 @@ function onResize() {
 ///////////////////////
 function onKeyDown(e) {
   if (inputLocked) return;
-  updateHUD(e.code, true);
+  setActiveCameraHUD(e.code, true);
   switch (e.code) {
     // Camera controls
     case 'Digit1':
@@ -1258,6 +1255,15 @@ function initializeInfoHUD() {
   updateInfoHUDVisibility();
 }
 
+function bindSlider(slider, valueEl, onChange) {
+  void valueEl;
+  if (!slider) return;
+  slider.addEventListener('input', () => {
+    onChange(Number(slider.value));
+    syncParamsHUD();
+  });
+}
+
 function initializeParamsHUD() {
   hudElements.paramsPanel = document.getElementById('params-hud');
   hudElements.paramsToggleButton = document.getElementById('params-hud-toggle');
@@ -1284,51 +1290,33 @@ function initializeParamsHUD() {
     });
   }
 
-  if (hudElements.yawSpeedSlider) {
-    hudElements.yawSpeedSlider.addEventListener('input', () => {
-      if (!drone) return;
-      drone.setYawSpeed(Number(hudElements.yawSpeedSlider.value));
-      syncParamsHUD();
-    });
-  }
+  bindSlider(hudElements.yawSpeedSlider, hudElements.yawSpeedValue, (value) => {
+    if (!drone) return;
+    drone.setYawSpeed(value);
+  });
 
-  if (hudElements.pitchSpeedSlider) {
-    hudElements.pitchSpeedSlider.addEventListener('input', () => {
-      if (!drone) return;
-      drone.setPitchSpeed(Number(hudElements.pitchSpeedSlider.value));
-      syncParamsHUD();
-    });
-  }
+  bindSlider(hudElements.pitchSpeedSlider, hudElements.pitchSpeedValue, (value) => {
+    if (!drone) return;
+    drone.setPitchSpeed(value);
+  });
 
-  if (hudElements.watchScaleSlider) {
-    hudElements.watchScaleSlider.addEventListener('input', () => {
-      setWatchScale(Number(hudElements.watchScaleSlider.value));
-      syncParamsHUD();
-    });
-  }
+  bindSlider(hudElements.watchScaleSlider, hudElements.watchScaleValue, (value) => {
+    setWatchScale(value);
+  });
 
-  if (hudElements.balloonScaleSlider) {
-    hudElements.balloonScaleSlider.addEventListener('input', () => {
-      setBalloonScale(Number(hudElements.balloonScaleSlider.value));
-      syncParamsHUD();
-    });
-  }
+  bindSlider(hudElements.balloonScaleSlider, hudElements.balloonScaleValue, (value) => {
+    setBalloonScale(value);
+  });
 
-  if (hudElements.droneSpeedSlider) {
-    hudElements.droneSpeedSlider.addEventListener('input', () => {
-      if (!drone) return;
-      drone.setMoveSpeed(Number(hudElements.droneSpeedSlider.value));
-      syncParamsHUD();
-    });
-  }
+  bindSlider(hudElements.droneSpeedSlider, hudElements.droneSpeedValue, (value) => {
+    if (!drone) return;
+    drone.setMoveSpeed(value);
+  });
 
-  if (hudElements.rotorSpeedSlider) {
-    hudElements.rotorSpeedSlider.addEventListener('input', () => {
-      if (!drone) return;
-      drone.setRotorSpeed(Number(hudElements.rotorSpeedSlider.value));
-      syncParamsHUD();
-    });
-  }
+  bindSlider(hudElements.rotorSpeedSlider, hudElements.rotorSpeedValue, (value) => {
+    if (!drone) return;
+    drone.setRotorSpeed(value);
+  });
 
   if (hudElements.paramsToggleButton) hudElements.paramsToggleButton.addEventListener('click', toggleParamsHUDVisibility);
   if (hudElements.paramsHideButton) hudElements.paramsHideButton.addEventListener('click', toggleParamsHUDVisibility);
@@ -1397,7 +1385,7 @@ function toggleParamsHUDVisibility() {
   updateParamsHUDVisibility();
 }
 
-function updateHUD(code, isPressed) {
+function setActiveCameraHUD(code, isPressed) {
   const elementId = CAMERA_KEY_IDS[code];
   if (!elementId || !isPressed) return;
 
