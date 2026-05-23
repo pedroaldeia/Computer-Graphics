@@ -12,6 +12,8 @@ const CONFIG = {
   },
   BUNNY: {
     ROTATION_SPEED: 1,
+    POSITION: new THREE.Vector3(0, 0, 0),
+    SCALE: new THREE.Vector3(5, 5, 5),
   },
   ARTEMIS: {
     ROTATION_SPEED: 10,
@@ -170,8 +172,8 @@ class Bunny extends DisplayObject {
           }
         });
 
-        object.scale.set(5, 5, 5);
-        object.position.set(0, 0, 0);
+        object.scale.set(CONFIG.BUNNY.SCALE.x, CONFIG.BUNNY.SCALE.y, CONFIG.BUNNY.SCALE.z);
+        object.position.set(CONFIG.BUNNY.POSITION.x, CONFIG.BUNNY.POSITION.y, CONFIG.BUNNY.POSITION.z);
 
         this.model = object;
         this.add(object);
