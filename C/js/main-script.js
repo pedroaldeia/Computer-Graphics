@@ -33,14 +33,11 @@ const CONFIG = {
     POINT_LIGHT_2_POS: new THREE.Vector3(1, 1, 1),
     SPOTLIGHT_1_POS: new THREE.Vector3(1, 1, 1),
     SPOTLIGHT_2_POS: new THREE.Vector3(1, 1, 1),
-    DIRECTIONAL_LIGHT_POS: new THREE.Vector3(1, 1, 1),
+    DIRECTIONAL_LIGHT_POS: new THREE.Vector3(50, 50, 0),
     AMBIENT_LIGHT_POS: new THREE.Vector3(1, 1, 1),
 
-    // Lights directions
-
-    // Notice that spotlights do not have a direction defined since they 
+    // Notice that lights do not have a direction defined since they 
     // will be centered on the object
-    DIRECTIONAL_LIGHT_DIRECTION: new THREE.Vector3(1, 1, 1),
   },
 
   CAMERA: {
@@ -203,13 +200,30 @@ function setupCameras() {
     updateCameraProjections();
 }
 
+////////////////////
+//* CREATE LIGHTS */
+////////////////////
+
+function setupLights() {
+  lightManager.ambientLight = THREE.AmbientLight(CONFIG.LIGHT.AMBIENT_LIGHT_SHADE, 0.1);
+  lightManager.directionalLight = THREE.DirectionalLight(CONFIG.LIGHT.DIRECTIONAL_LIGHT_SHADE, 0.5);
+  
+  lightManager.directionalLight
+      .position.set(CONFIG.LIGHT.DIRECTIONAL_LIGHT_POS)
+      .target.position.set(CONFIG.POSITION.IN_SCENE_POS);
+
+  for (light in lightManager) scene.add(light);
+}
+
 ////////////
 /* UPDATE */
 ////////////
 function update() {
   const delta = clock.getDelta();
 
-
+  for (object in [tesseract, bunny, artemis]) {
+    object.rotate(delta);
+  }
   // if (moveVec.lengthSq() > 0) {
   //   drone.moveDirection(moveVec, delta);
   // }
@@ -249,6 +263,7 @@ function init() {
 
   createScene();
   setupCameras();
+  setupLights();
   initializeHUD();
 
   window.addEventListener("resize", onResize);
