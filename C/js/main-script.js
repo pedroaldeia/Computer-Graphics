@@ -4,10 +4,18 @@ import Stats from 'stats';
 const CONFIG = {
   HEIGHT: window.innerHeight,
   WIDTH: window.innerWidth,
+  
+  BASE_ROTATION_SPEED: 10,
 
-  TESSERACT: {},
-  BUNNY: {},
-  ARTEMIS: {},
+  TESSERACT: {
+    ROTATION_SPEED: BASE_ROTATION_SPEED,
+  },
+  BUNNY: {
+    ROTATION_SPEED: BASE_ROTATION_SPEED,
+  },
+  ARTEMIS: {
+    ROTATION_SPEED: BASE_ROTATION_SPEED,
+  },
 
   POSITION: {
     OUT_OF_SCENE_POS: new THREE.Vector3(100, 100, -100),
@@ -44,6 +52,7 @@ const CONFIG = {
   },
 
   BACKGROUND: new THREE.Color(0x404040),
+
 };
 
 const lightManager = {
@@ -154,7 +163,7 @@ function updateCameraProjections() {
 class DisplayObject extends THREE.Group {
   constructor() {
     super();
-    // Define Tesseract attributes
+    
     self.lights = {
       spotlight1: THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE),
       spotlight2: THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE),
@@ -164,6 +173,8 @@ class DisplayObject extends THREE.Group {
 
     self.outOfScenePos = CONFIG.POSITION.OUT_OF_SCENE_POS;
     self.inScenePos = CONFIG.POSITION.IN_SCENE_POS;
+
+    self.rotation_speed = CONFIG.BASE_ROTATION_SPEED;
 
     this.setupLights();
   }
@@ -188,35 +199,43 @@ class DisplayObject extends THREE.Group {
     this.position(this.inScenePos);
   }
 
-  rotate(delta) {
-    this.rotate(delta*Math.PI/20);
+  rotate(deltaTime) {
+    const angle = direction * this.rotation_speed * (deltaTime || 0);
+    this.rotation.y += angle;
   }
 }
 
 class Tesseract extends DisplayObject {
   constructor() {
     super();
+
     // Define Tesseract attributes
+    this.rotation_speed = CONFIG.TESSERACT.ROTATION_SPEED;
   }
 
   // Define Tesseract methods
+
 }
 
 class Bunny extends DisplayObject {
   // Maybe does not have to be defined, since we are importing the model
   constructor() {
     super();
+
     // Define Bunny attributes
+    this.rotation_speed = CONFIG.BUNNY.ROTATION_SPEED;
   }
 
   // Define Bunny methods
-
+  
 }
 class Artemis extends DisplayObject {
   // Maybe does not have to be defined, since we are importing the model
   constructor() {
     super();
+
     // Define Artemis attributes
+    this.rotation_speed = CONFIG.ARTEMIS.ROTATION_SPEED;
   }
 
   // Define Artemis methods
