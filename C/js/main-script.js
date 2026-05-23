@@ -1,16 +1,19 @@
 import * as THREE from "three";
+import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 
 const CONFIG = {
   HEIGHT: window.innerHeight,
   WIDTH: window.innerWidth,
   
-  BASE_ROTATION_SPEED: 10,
+  BASE_ROTATION_SPEED: 1,
 
   TESSERACT: {
     ROTATION_SPEED: 10,
   },
   BUNNY: {
-    ROTATION_SPEED: 10,
+    ROTATION_SPEED: 1,
+    POSITION: new THREE.Vector3(0, 0, 0),
+    SCALE: new THREE.Vector3(5, 5, 5),
   },
   ARTEMIS: {
     ROTATION_SPEED: 10,
@@ -44,7 +47,7 @@ const CONFIG = {
     FOV: 70,
     NEAR: 1,
     FAR: 1000,
-    POSITION: { x: 0, y: 5, z: -8 },
+    POSITION: { x: 10, y: 5, z: 10 },
   },
 
   BACKGROUND: new THREE.Color(0x000000),
@@ -62,6 +65,9 @@ let camera;
 let renderer, scene;
 
 let tesseract, bunny, artemis;
+let activeModel = "tesseract";
+// TEMP!!!! <-REMOVE BEFORE SUBMISSION-> /////////////////////////////////
+let temporaryViewLight;
 
 // Clock for frame delta time
 const clock = new THREE.Clock();
@@ -121,7 +127,7 @@ class DisplayObject extends THREE.Group {
   }
 
   rotate(deltaTime) {
-    const angle = direction * this.rotation_speed * (deltaTime || 0);
+    const angle = this.rotation_speed * (deltaTime || 0);
     this.rotation.y += angle;
   }
 }
@@ -145,9 +151,36 @@ class Bunny extends DisplayObject {
 
     // Define Bunny attributes
     this.rotation_speed = CONFIG.BUNNY.ROTATION_SPEED;
+    this.model = null;
+
+    this.loadModel();
   }
 
-  // Define Bunny methods
+  loadModel() {
+    const loader = new OBJLoader();
+    const whiteMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
+
+    loader.load(
+      "js/bunny.obj",
+      (object) => {
+        object.traverse((node) => {
+          if (node.isMesh) {
+            node.material = whiteMaterial;
+          }
+        });
+
+        object.scale.set(CONFIG.BUNNY.SCALE.x, CONFIG.BUNNY.SCALE.y, CONFIG.BUNNY.SCALE.z);
+        object.position.set(CONFIG.BUNNY.POSITION.x, CONFIG.BUNNY.POSITION.y, CONFIG.BUNNY.POSITION.z);
+
+        this.model = object;
+        this.add(object);
+      },
+      undefined,
+      (error) => {
+        console.error("Error loading bunny.obj:", error);
+      }
+    );
+  }
 
 }
 class Artemis extends DisplayObject {
@@ -172,7 +205,11 @@ class Artemis extends DisplayObject {
 function createScene() {
   scene = new THREE.Scene();
   scene.background = CONFIG.BACKGROUND;
-  
+
+  // TEMP!!!! <-REMOVE BEFORE SUBMISSION-> /////////////////////////////////
+  temporaryViewLight = new THREE.HemisphereLight(0xffffff, 0x404040, 2.5);
+  scene.add(temporaryViewLight);
+
   tesseract = new Tesseract();
   tesseract.inScene();
   scene.add(tesseract);
@@ -221,25 +258,12 @@ function setupLights() {
 function update() {
   const delta = clock.getDelta();
 
-  for (object in [tesseract, bunny, artemis]) {
-    object.rotate(delta);
+  if (activeModel === "tesseract") {
+    tesseract.rotate(delta);
+  } else if (activeModel === "bunny") {
+    bunny.rotate(delta);
   }
-  // if (moveVec.lengthSq() > 0) {
-  //   drone.moveDirection(moveVec, delta);
-  // }
-  // // Continuous rotation (yaw) from I/K keys
-  // const yawDir = (rotationState.yawLeft ? 1 : 0) + (rotationState.yawRight ? -1 : 0);
-  // if (yawDir !== 0 && drone && typeof drone.rotateYaw === 'function') {
-  //   drone.rotateYaw(yawDir, delta);
-  // }
-  // // Continuous rotation (pitch) from O/L keys (limited)
-  // const pitchDir = (rotationState.pitchUp ? 1 : 0) + (rotationState.pitchDown ? -1 : 0);
-  // if (pitchDir !== 0 && drone && typeof drone.rotatePitch === 'function') {
-  //   drone.rotatePitch(pitchDir, delta);
-  // }
-  // // Animate drone arms folding/unfolding
-  // drone.updateArms();
-  // drone.rotateRotors(delta);
+
 }
 
 /////////////
@@ -293,19 +317,29 @@ function onResize() {
 }
 
 function initializeHUD() {
-  toggleHUDKey('tesseract', true);
-//   toggleHUDKey('key-h', helpersVisible);
+  document.querySelectorAll("[data-model-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setActiveModel(button.dataset.modelId);
+    });
+  });
+
+  setActiveModel("tesseract");
 }
 
-function toggleHUDKey(elementId, isActive) {
-  const el = document.getElementById(elementId);
-  if (el) {
-    if (isActive) {
-      el.classList.add('active');
-    } else {
-      el.classList.remove('active');
-    }
+function setActiveModel(modelId) {
+  activeModel = modelId;
+
+  if (modelId === "tesseract") {
+    tesseract.inScene();
+    bunny.outOfScene();
+  } else if (modelId === "bunny") {
+    bunny.inScene();
+    tesseract.outOfScene();
   }
+
+  document.querySelectorAll("[data-model-id]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.modelId === modelId);
+  });
 }
 
 init();
