@@ -69,7 +69,7 @@ let renderer, scene;
 
 let tesseract, bunny, artemis;
 let models;
-let activeModel = "tesseract";
+let activeModel;
 // TEMP!!!! <-REMOVE BEFORE SUBMISSION-> /////////////////////////////////
 let temporaryViewLight;
 
@@ -150,6 +150,12 @@ class Tesseract extends DisplayModel {
   // Define Tesseract methods
 
   constructTesseract() {
+    const geometry = new THREE.BoxGeometry(2, 2, 2);
+    const material = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    this.add(mesh);
   }
 
 }
@@ -238,6 +244,9 @@ function createScene() {
     [bunny.id]: bunny,
     [artemis.id]: artemis
   };
+
+  // Set default active model
+  activeModel = tesseract;
 }
 
 //////////////////////
@@ -274,11 +283,7 @@ function setupLights() {
 function update() {
   const delta = clock.getDelta();
 
-  if (activeModel === "tesseract") {
-    tesseract.rotate(delta);
-  } else if (activeModel === "bunny") {
-    bunny.rotate(delta);
-  }
+  activeModel.rotate(delta);
 
 }
 
