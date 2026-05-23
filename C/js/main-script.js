@@ -77,6 +77,7 @@ const lightManager = {
 let camera;
 
 let renderer, scene;
+let elapsedTime = 0;
 
 let tesseract, bunny, artemis;
 let models;
@@ -116,7 +117,7 @@ class DisplayModel extends THREE.Group {
     this.outOfScenePos = CONFIG.POSITION.OUT_OF_SCENE_POS;
     this.inScenePos = CONFIG.POSITION.IN_SCENE_POS;
 
-    this.rotation_speed = CONFIG.BASE_ROTATION_SPEED;
+    this.rotationSpeed = CONFIG.BASE_ROTATION_SPEED;
 
     this.setupLights();
   }
@@ -127,10 +128,13 @@ class DisplayModel extends THREE.Group {
     this.lights.pointLight1.position.copy(CONFIG.LIGHT.POINT_LIGHT_1_POS);
     this.lights.pointLight2.position.copy(CONFIG.LIGHT.POINT_LIGHT_2_POS);
 
-    this.lights.spotlight1.target.position.set(this.position);
-    this.lights.spotlight2.target.position.set(this.position);
+    this.lights.spotlight1.target.position.copy(this.position);
+    this.lights.spotlight2.target.position.copy(this.position);
 
     for (const light of Object.values(this.lights)) this.add(light);
+
+    this.add(this.lights.spotlight1.target);
+    this.add(this.lights.spotlight2.target);
   }
 
   outOfScene() {
@@ -141,9 +145,11 @@ class DisplayModel extends THREE.Group {
     this.position.copy(this.inScenePos);
   }
 
-  rotate(deltaTime) {
-    const angle = this.rotation_speed * (deltaTime || 0);
+  rotate(elapsedTime) {
+    const angle = this.rotationSpeed * (elapsedTime || 0);
     this.rotation.y += angle;
+    // Debug: log rotation for this object
+    console.debug(`[rotate] ${this.id || this.constructor.name} angle=`, angle);
   }
 }
 
@@ -152,15 +158,15 @@ class Tesseract extends DisplayModel {
     super();
 
     // Define Tesseract attributes
-    this.id = CONFIG.TESSERACT.MODEL_ID;
+    this.model_id = CONFIG.TESSERACT.MODEL_ID;
 
     this.rotationSpeed = CONFIG.TESSERACT.ROTATION_SPEED;
 
     this.outerCubeScale = CONFIG.TESSERACT.OUTER_CUBE_SCALE;
     this.innerCubeScale = CONFIG.TESSERACT.INNER_CUBE_SCALE;
 
-    this.outerCubeScaleSpeed = CONFIG.TESSERACT.OUTER_CUBE_ROTATION_SPEED;
-    this.innerCubeScaleSpeed = CONFIG.TESSERACT.INNER_CUBE_ROTATION_SPEED;
+    this.outerCubeScaleSpeed = CONFIG.TESSERACT.OUTER_CUBE_SCALE_SPEED;
+    this.innerCubeScaleSpeed = CONFIG.TESSERACT.INNER_CUBE_SCALE_SPEED;
 
     this.outerCubeColour = CONFIG.TESSERACT.OUTER_CUBE_COLOUR;
     this.innerCubeColour = CONFIG.TESSERACT.INNER_CUBE_COLOUR;
@@ -188,7 +194,7 @@ class Tesseract extends DisplayModel {
     outerCube.castShadow = true;
     outerCube.receiveShadow = true;
 
-    this.add(mesh);
+    this.add(outerCube);
     return outerCube;
   }
 
@@ -199,7 +205,7 @@ class Tesseract extends DisplayModel {
       this.innerCubeScale);
 
     const material = new THREE.MeshPhongMaterial(
-      { color: this.innerCubeScale });
+      { color: this.innerCubeColour });
     const innerCube = new THREE.Mesh(geometry, material);
 
     innerCube.castShadow = true;
@@ -209,23 +215,26 @@ class Tesseract extends DisplayModel {
     return innerCube;
   }
 
-  rotate(deltaTime) {
+  rotate(elapsedTime) {
     // Calculate rotation angles
-    const angle = this.rotationSpeed * (deltaTime || 0);
+    const angle = this.rotationSpeed * (elapsedTime || 0);
 
     // Rotation
     this.rotation.y += angle;
 
     // Scale
-    this.outerCube.scale(
-      Math.sin(angle * this.outerCubeScaleSpeed),
-      Math.sin(angle * this.outerCubeScaleSpeed),
-      Math.sin(angle * this.outerCubeScaleSpeed))
+    const outerScale = Math.abs(Math.sin(angle * this.outerCubeScaleSpeed));
+    const innerScale = Math.abs(Math.sin(angle * this.innerCubeScaleSpeed));
 
-    this.innerCube.scale(
-      Math.sin(angle * this.innerCubeScaleSpeed),
-      Math.sin(angle * this.innerCubeScaleSpeed),
-      Math.sin(angle * this.innerCubeScaleSpeed))
+    this.outerCube.scale.set(
+      outerScale,
+      outerScale,
+      outerScale)
+
+    this.innerCube.scale.set(
+      innerScale,
+      innerScale,
+      innerScale)
   }
 
 }
@@ -236,8 +245,8 @@ class Bunny extends DisplayModel {
     super();
 
     // Define Bunny attributes
-    this.id = CONFIG.BUNNY.MODEL_ID;
-    this.rotation_speed = CONFIG.BUNNY.ROTATION_SPEED;
+    this.model_id = CONFIG.BUNNY.MODEL_ID;
+    this.rotationSpeed = CONFIG.BUNNY.ROTATION_SPEED;
 
     this.loadModel();
   }
@@ -256,10 +265,10 @@ class Bunny extends DisplayModel {
         });
 
         model.scale.set(CONFIG.BUNNY.SCALE.x, CONFIG.BUNNY.SCALE.y, CONFIG.BUNNY.SCALE.z);
-        model.position.set(CONFIG.BUNNY.POSITION.x, CONFIG.BUNNY.POSITION.y, CONFIG.BUNNY.POSITION.z);
 
         this.model = model;
         this.add(model);
+        console.log('[Bunny.loadModel] bunny model loaded');
       },
       undefined,
       (error) => {
@@ -275,8 +284,8 @@ class Artemis extends DisplayModel {
     super();
 
     // Define Artemis attributes
-    this.id = CONFIG.ARTEMIS.MODEL_ID;
-    this.rotation_speed = CONFIG.ARTEMIS.ROTATION_SPEED;
+    this.model_id = CONFIG.ARTEMIS.MODEL_ID;
+    this.rotationSpeed = CONFIG.ARTEMIS.ROTATION_SPEED;
   }
 
   // Define Artemis methods
@@ -317,6 +326,7 @@ function createScene() {
 
   // Set default active model
   activeModel = tesseract;
+  console.log('[createScene] scene created, models:', Object.keys(models));
 }
 
 //////////////////////
@@ -342,9 +352,12 @@ function setupLights() {
   
   lightManager.directionalLight.position.copy(CONFIG.LIGHT.DIRECTIONAL_LIGHT_POS);
   lightManager.directionalLight.target.position.copy(CONFIG.POSITION.IN_SCENE_POS);
+    lightManager.directionalLight.castShadow = true;
+    lightManager.directionalLight.shadow.mapSize.set(1024, 1024);
 
-  for (const light of Object.values(lightManager)) scene.add(light);
-  scene.add(lightManager.directionalLight.target);
+    for (const light of Object.values(lightManager)) scene.add(light);
+    scene.add(lightManager.directionalLight.target);
+    console.log('[setupLights] lights added:', Object.keys(lightManager));
 }
 
 ////////////
@@ -352,8 +365,9 @@ function setupLights() {
 ////////////
 function update() {
   const delta = clock.getDelta();
+  elapsedTime += delta;
 
-  activeModel.rotate(delta);
+  activeModel.rotate(elapsedTime);
 
 }
 
@@ -375,6 +389,9 @@ function init() {
   renderer.domElement.style.left = '0';
   renderer.domElement.style.zIndex = '0';
   document.body.appendChild(renderer.domElement);
+  renderer.setPixelRatio(window.devicePixelRatio || 1);
+  renderer.shadowMap.enabled = true;
+  console.log('[init] renderer appended, size:', CONFIG.WIDTH, CONFIG.HEIGHT);
 
   createScene();
   setupCameras();
@@ -382,6 +399,8 @@ function init() {
   initializeHUD();
 
   window.addEventListener("resize", onResize);
+
+  setActiveModel("tesseract");
 
   animate();
 }
@@ -404,6 +423,7 @@ function onResize() {
 
   if (window.innerHeight > 0 && window.innerWidth > 0) {
     updateCameraProjections();
+    console.log('[setupCameras] camera position:', camera.position.toArray());
   }
 }
 
@@ -413,17 +433,22 @@ function initializeHUD() {
       setActiveModel(button.dataset.modelId);
     });
   });
-
-  setActiveModel("tesseract");
 }
 
 function setActiveModel(modelId) {
+  console.log('[setActiveModel] requested:', modelId);
   if (activeModel){
-    activeModel.outOfScene();
+    try { activeModel.outOfScene(); } catch (e) { console.warn('[setActiveModel] activeModel outOfScene failed', e); }
   }
 
-  activeModel = models[modelId];
-  activeModel.inScene();
+  const model = models[modelId];
+  if (!model) {
+    console.warn(`[setActiveModel] no model found for id '${modelId}'`);
+    return;
+  }
+
+  activeModel = model;
+  try { activeModel.inScene(); } catch (e) { console.warn('[setActiveModel] inScene failed', e); }
 
   document.querySelectorAll("[data-model-id]").forEach((button) => {
     button.classList.toggle("active", button.dataset.modelId === modelId);
