@@ -8,14 +8,17 @@ const CONFIG = {
   BASE_ROTATION_SPEED: 1,
 
   TESSERACT: {
+    MODEL_ID: "tesseract",
     ROTATION_SPEED: 10,
   },
   BUNNY: {
+    MODEL_ID: "bunny",
     ROTATION_SPEED: 1,
     POSITION: new THREE.Vector3(0, 0, 0),
     SCALE: new THREE.Vector3(5, 5, 5),
   },
   ARTEMIS: {
+    MODEL_ID: "artemis",
     ROTATION_SPEED: 10,
   },
 
@@ -40,7 +43,7 @@ const CONFIG = {
     AMBIENT_LIGHT_POS: new THREE.Vector3(1, 1, 1),
 
     // Notice that lights do not have a direction defined since they 
-    // will be centered on the object
+    // will be centered on the model
   },
 
   CAMERA: {
@@ -55,7 +58,7 @@ const CONFIG = {
 };
 
 const lightManager = {
-  // light manager only accounts for the lights that are not assigned to the objects
+  // light manager only accounts for the lights that are not assigned to the models
   directionalLight: null,
   ambientLight: null,
 }
@@ -65,6 +68,7 @@ let camera;
 let renderer, scene;
 
 let tesseract, bunny, artemis;
+let models;
 let activeModel = "tesseract";
 // TEMP!!!! <-REMOVE BEFORE SUBMISSION-> /////////////////////////////////
 let temporaryViewLight;
@@ -87,7 +91,7 @@ function updateCameraProjections() {
 /* CLASS DEFINITIONS */
 ///////////////////////
 
-class DisplayObject extends THREE.Group {
+class DisplayModel extends THREE.Group {
   constructor() {
     super();
     
@@ -132,26 +136,32 @@ class DisplayObject extends THREE.Group {
   }
 }
 
-class Tesseract extends DisplayObject {
+class Tesseract extends DisplayModel {
   constructor() {
     super();
 
     // Define Tesseract attributes
+    this.id = CONFIG.TESSERACT.MODEL_ID;
     this.rotation_speed = CONFIG.TESSERACT.ROTATION_SPEED;
+
+    this.constructTesseract();
   }
 
   // Define Tesseract methods
 
+  constructTesseract() {
+  }
+
 }
 
-class Bunny extends DisplayObject {
+class Bunny extends DisplayModel {
   // Maybe does not have to be defined, since we are importing the model
   constructor() {
     super();
 
     // Define Bunny attributes
+    this.id = CONFIG.BUNNY.MODEL_ID;
     this.rotation_speed = CONFIG.BUNNY.ROTATION_SPEED;
-    this.model = null;
 
     this.loadModel();
   }
@@ -162,18 +172,18 @@ class Bunny extends DisplayObject {
 
     loader.load(
       "js/bunny.obj",
-      (object) => {
-        object.traverse((node) => {
+      (model) => {
+        model.traverse((node) => {
           if (node.isMesh) {
             node.material = whiteMaterial;
           }
         });
 
-        object.scale.set(CONFIG.BUNNY.SCALE.x, CONFIG.BUNNY.SCALE.y, CONFIG.BUNNY.SCALE.z);
-        object.position.set(CONFIG.BUNNY.POSITION.x, CONFIG.BUNNY.POSITION.y, CONFIG.BUNNY.POSITION.z);
+        model.scale.set(CONFIG.BUNNY.SCALE.x, CONFIG.BUNNY.SCALE.y, CONFIG.BUNNY.SCALE.z);
+        model.position.set(CONFIG.BUNNY.POSITION.x, CONFIG.BUNNY.POSITION.y, CONFIG.BUNNY.POSITION.z);
 
-        this.model = object;
-        this.add(object);
+        this.model = model;
+        this.add(model);
       },
       undefined,
       (error) => {
@@ -183,12 +193,13 @@ class Bunny extends DisplayObject {
   }
 
 }
-class Artemis extends DisplayObject {
+class Artemis extends DisplayModel {
   // Maybe does not have to be defined, since we are importing the model
   constructor() {
     super();
 
     // Define Artemis attributes
+    this.id = CONFIG.ARTEMIS.MODEL_ID;
     this.rotation_speed = CONFIG.ARTEMIS.ROTATION_SPEED;
   }
 
@@ -222,6 +233,11 @@ function createScene() {
   artemis.outOfScene();
   scene.add(artemis);
 
+  models = {
+    [tesseract.id]: tesseract,
+    [bunny.id]: bunny,
+    [artemis.id]: artemis
+  };
 }
 
 //////////////////////
@@ -242,14 +258,14 @@ function setupCameras() {
 ////////////////////
 
 function setupLights() {
-  lightManager.ambientLight = THREE.AmbientLight(CONFIG.LIGHT.AMBIENT_LIGHT_SHADE, 0.1);
-  lightManager.directionalLight = THREE.DirectionalLight(CONFIG.LIGHT.DIRECTIONAL_LIGHT_SHADE, 0.5);
+  lightManager.ambientLight = new THREE.AmbientLight(CONFIG.LIGHT.AMBIENT_LIGHT_SHADE, 0.1);
+  lightManager.directionalLight = new THREE.DirectionalLight(CONFIG.LIGHT.DIRECTIONAL_LIGHT_SHADE, 0.5);
   
-  lightManager.directionalLight
-      .position.set(CONFIG.LIGHT.DIRECTIONAL_LIGHT_POS)
-      .target.position.set(CONFIG.POSITION.IN_SCENE_POS);
+  lightManager.directionalLight.position.copy(CONFIG.LIGHT.DIRECTIONAL_LIGHT_POS);
+  lightManager.directionalLight.target.position.copy(CONFIG.POSITION.IN_SCENE_POS);
 
-  for (light in lightManager) scene.add(light);
+  for (const light of Object.values(lightManager)) scene.add(light);
+  scene.add(lightManager.directionalLight.target);
 }
 
 ////////////
@@ -327,15 +343,12 @@ function initializeHUD() {
 }
 
 function setActiveModel(modelId) {
-  activeModel = modelId;
-
-  if (modelId === "tesseract") {
-    tesseract.inScene();
-    bunny.outOfScene();
-  } else if (modelId === "bunny") {
-    bunny.inScene();
-    tesseract.outOfScene();
+  if (activeModel){
+    activeModel.outOfScene();
   }
+
+  activeModel = models[modelId];
+  activeModel.inScene();
 
   document.querySelectorAll("[data-model-id]").forEach((button) => {
     button.classList.toggle("active", button.dataset.modelId === modelId);
