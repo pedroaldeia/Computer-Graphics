@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import Stats from 'stats';
 
 const CONFIG = {
   HEIGHT: window.innerHeight,
@@ -69,13 +68,6 @@ let tesseract, bunny, artemis;
 
 // Clock for frame delta time
 const clock = new THREE.Clock();
-
-const stats = new Stats();
-stats.showPanel(0);
-document.body.appendChild( stats.dom );
-stats.dom.style.transform = 'scale(1.5)';
-stats.dom.style.transformOrigin = 'top left';
-
 
 // Update projection matrices for all cameras.
 // Orthographic cameras are positioned using a "half size" which is scaled by the
@@ -268,12 +260,9 @@ function init() {
 /* ANIMATION CYCLE */
 /////////////////////
 function animate() {
-  stats.begin();
-
   update();
   render();
 	
-  stats.end();
   requestAnimationFrame(animate);
 }
 
