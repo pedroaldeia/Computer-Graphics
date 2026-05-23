@@ -25,8 +25,9 @@ const CONFIG = {
     AMBIENT_LIGHT_POS: THREE.Vector3(1,1,1),
 
     // Lights directions
-    SPOTLIGHT_1_DIRECTION: THREE.Vector3(1,1,1),
-    SPOTLIGHT_2_DIRECTION: THREE.Vector3(1,1,1),
+
+    // Notice that spotlights do not have a direction defined since they 
+    // will be centered on the object
     DIRECTIONAL_LIGHT_DIRECTION: THREE.Vector3(1,1,1),
   },
 
@@ -150,13 +151,26 @@ class Tesseract extends THREE.Group {
     super();
     // Define Tesseract attributes
     self.lights = {
-      spotlight1: THREE.SpotLight(),
-      spotlight2: THREE.SpotLight(),
-      pointLight1: THREE.PointLight(),
-      pointLight2: THREE.PointLight(),
+      spotlight1: THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE),
+      spotlight2: THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE),
+      pointLight1: THREE.PointLight(CONFIG.LIGHT.POINT_LIGHT_SHADE),
+      pointLight2: THREE.PointLight(CONFIG.LIGHT.POINT_LIGHT_SHADE),
     };
   }
+
   // Define Tesseract methods
+
+  setupLights() {
+    self.lights.spotlight1.position(CONFIG.LIGHT.SPOTLIGHT_1_POS);
+    self.lights.spotlight2.position(CONFIG.LIGHT.SPOTLIGHT_1_POS);
+    self.lights.pointlight1.position(CONFIG.LIGHT.POINT_LIGHT_1_POS);
+    self.lights.pointlight2.position(CONFIG.LIGHT.POINT_LIGHT_1_POS);
+
+    self.lights.spotlight1.lookAt(this);
+    self.lights.spotlight2.lookAt(this);
+
+    for(light in self.lights) this.add(light);
+  }
 }
 
 class Bunny extends THREE.Group {
@@ -165,13 +179,26 @@ class Bunny extends THREE.Group {
     super();
     // Define Bunny attributes
     self.lights = {
-      spotlight1: THREE.SpotLight(),
-      spotlight2: THREE.SpotLight(),
-      pointLight1: THREE.PointLight(),
-      pointLight2: THREE.PointLight(),
+      spotlight1: THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE),
+      spotlight2: THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE),
+      pointLight1: THREE.PointLight(CONFIG.LIGHT.POINT_LIGHT_SHADE),
+      pointLight2: THREE.PointLight(CONFIG.LIGHT.POINT_LIGHT_SHADE),
     };
   }
+  
   // Define Bunny methods
+
+  setupLights() {
+    self.lights.spotlight1.position(CONFIG.LIGHT.SPOTLIGHT_1_POS);
+    self.lights.spotlight2.position(CONFIG.LIGHT.SPOTLIGHT_1_POS);
+    self.lights.pointlight1.position(CONFIG.LIGHT.POINT_LIGHT_1_POS);
+    self.lights.pointlight2.position(CONFIG.LIGHT.POINT_LIGHT_1_POS);
+
+    self.lights.spotlight1.lookAt(this);
+    self.lights.spotlight2.lookAt(this);
+
+    for(light in self.lights) this.add(light);
+  }
 }
 class Artemis extends THREE.Group {
   // Maybe does not have to be defined, since we are importing the model
@@ -179,18 +206,27 @@ class Artemis extends THREE.Group {
     super();
     // Define Artemis attributes
     self.lights = {
-      spotlight1: THREE.SpotLight(),
-      spotlight2: THREE.SpotLight(),
-      pointLight1: THREE.PointLight(),
-      pointLight2: THREE.PointLight(),
+      spotlight1: THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE),
+      spotlight2: THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE),
+      pointLight1: THREE.PointLight(CONFIG.LIGHT.POINT_LIGHT_SHADE),
+      pointLight2: THREE.PointLight(CONFIG.LIGHT.POINT_LIGHT_SHADE),
     };
-    self.setLights()
+    self.setupLights();
   }
 
-  selfLights(){
-
-  }
   // Define Artemis methods
+
+  setupLights() {
+    self.lights.spotlight1.position(CONFIG.LIGHT.SPOTLIGHT_1_POS);
+    self.lights.spotlight2.position(CONFIG.LIGHT.SPOTLIGHT_1_POS);
+    self.lights.pointlight1.position(CONFIG.LIGHT.POINT_LIGHT_1_POS);
+    self.lights.pointlight2.position(CONFIG.LIGHT.POINT_LIGHT_1_POS);
+
+    self.lights.spotlight1.lookAt(this);
+    self.lights.spotlight2.lookAt(this);
+
+    for(light in self.lights) this.add(light);
+  }
 }
 
 // Define other helper methods
