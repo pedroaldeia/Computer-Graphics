@@ -1,8 +1,47 @@
+html,
 body {
     margin: 0px;
     background-color: #fff;
     overflow: hidden;
 }
 
+button {
+  font: inherit;
+}
 
+.hud-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-family: Arial, Helvetica, sans-serif;
+}
 
+.hud-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hud-button {
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+}
+
+.hud-button.active {
+  background: #ecf7ff;
+  color: #050505;
+}
