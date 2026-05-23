@@ -179,6 +179,18 @@ class DisplayObject extends THREE.Group {
 
     for(light in self.lights) this.add(light);
   }
+
+  outOfScene() {
+    this.position(this.outOfScenePos);
+  }
+
+  inScene() {
+    this.position(this.inScenePos);
+  }
+
+  rotate(delta) {
+    this.rotate(delta*Math.PI/20);
+  }
 }
 
 class Tesseract extends DisplayObject {
