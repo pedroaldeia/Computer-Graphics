@@ -9,12 +9,24 @@ const CONFIG = {
 
   TESSERACT: {
     MODEL_ID: "tesseract",
-    ROTATION_SPEED: 10,
+
+    ROTATION_SPEED: 1,
+
+    OUTER_CUBE_SCALE: 10,
+    INNER_CUBE_SCALE: 5,
+
+    OUTER_CUBE_SCALE_SPEED: 1,
+    INNER_CUBE_SCALE_SPEED: 1.5,
+
+    OUTER_CUBE_COLOUR: new THREE.Color(0x00ff00),
+    INNER_CUBE_COLOUR: new THREE.Color(0x00ff00),
   },
+
   BUNNY: {
     MODEL_ID: "bunny",
+
     ROTATION_SPEED: 1,
-    POSITION: new THREE.Vector3(0, 0, 0),
+
     SCALE: new THREE.Vector3(5, 5, 5),
   },
   ARTEMIS: {
@@ -35,12 +47,11 @@ const CONFIG = {
     AMBIENT_LIGHT_SHADE: new THREE.Color(0xffffff), 
 
     // Light positions (relative in case of point and spotlights)
-    POINT_LIGHT_1_POS: new THREE.Vector3(1, 1, 1),
-    POINT_LIGHT_2_POS: new THREE.Vector3(1, 1, 1),
-    SPOTLIGHT_1_POS: new THREE.Vector3(1, 1, 1),
-    SPOTLIGHT_2_POS: new THREE.Vector3(1, 1, 1),
+    POINT_LIGHT_1_POS: new THREE.Vector3(100, 100, 100),
+    POINT_LIGHT_2_POS: new THREE.Vector3(100, 100, 100),
+    SPOTLIGHT_1_POS: new THREE.Vector3(100, 100, 100),
+    SPOTLIGHT_2_POS: new THREE.Vector3(100, 100, 100),
     DIRECTIONAL_LIGHT_POS: new THREE.Vector3(50, 50, 0),
-    AMBIENT_LIGHT_POS: new THREE.Vector3(1, 1, 1),
 
     // Notice that lights do not have a direction defined since they 
     // will be centered on the model
@@ -116,8 +127,8 @@ class DisplayModel extends THREE.Group {
     this.lights.pointLight1.position.copy(CONFIG.LIGHT.POINT_LIGHT_1_POS);
     this.lights.pointLight2.position.copy(CONFIG.LIGHT.POINT_LIGHT_2_POS);
 
-    this.lights.spotlight1.lookAt(this);
-    this.lights.spotlight2.lookAt(this);
+    this.lights.spotlight1.target.position.set(this.position);
+    this.lights.spotlight2.target.position.set(this.position);
 
     for (const light of Object.values(this.lights)) this.add(light);
   }
@@ -142,7 +153,17 @@ class Tesseract extends DisplayModel {
 
     // Define Tesseract attributes
     this.id = CONFIG.TESSERACT.MODEL_ID;
-    this.rotation_speed = CONFIG.TESSERACT.ROTATION_SPEED;
+
+    this.rotationSpeed = CONFIG.TESSERACT.ROTATION_SPEED;
+
+    this.outerCubeScale = CONFIG.TESSERACT.OUTER_CUBE_SCALE;
+    this.innerCubeScale = CONFIG.TESSERACT.INNER_CUBE_SCALE;
+
+    this.outerCubeScaleSpeed = CONFIG.TESSERACT.OUTER_CUBE_ROTATION_SPEED;
+    this.innerCubeScaleSpeed = CONFIG.TESSERACT.INNER_CUBE_ROTATION_SPEED;
+
+    this.outerCubeColour = CONFIG.TESSERACT.OUTER_CUBE_COLOUR;
+    this.innerCubeColour = CONFIG.TESSERACT.INNER_CUBE_COLOUR;
 
     this.constructTesseract();
   }
@@ -150,12 +171,61 @@ class Tesseract extends DisplayModel {
   // Define Tesseract methods
 
   constructTesseract() {
-    const geometry = new THREE.BoxGeometry(2, 2, 2);
-    const material = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
+    this.outerCube = this.createOuterCube();
+    this.innerCube = this.createInnerCube();
+  }
+
+  createOuterCube() {
+    const geometry = new THREE.BoxGeometry(
+      this.outerCubeScale, 
+      this.outerCubeScale, 
+      this.outerCubeScale);
+
+    const material = new THREE.MeshPhongMaterial(
+      { color: this.outerCubeColour });
+    const outerCube = new THREE.Mesh(geometry, material);
+
+    outerCube.castShadow = true;
+    outerCube.receiveShadow = true;
+
     this.add(mesh);
+    return outerCube;
+  }
+
+  createInnerCube() {
+    const geometry = new THREE.BoxGeometry(
+      this.innerCubeScale, 
+      this.innerCubeScale, 
+      this.innerCubeScale);
+
+    const material = new THREE.MeshPhongMaterial(
+      { color: this.innerCubeScale });
+    const innerCube = new THREE.Mesh(geometry, material);
+
+    innerCube.castShadow = true;
+    innerCube.receiveShadow = true;
+
+    this.add(innerCube);
+    return innerCube;
+  }
+
+  rotate(deltaTime) {
+    // Calculate rotation angles
+    const angle = this.rotationSpeed * (deltaTime || 0);
+
+    // Rotation
+    this.rotation.y += angle;
+
+    // Scale
+    this.outerCube.scale(
+      Math.sin(angle * this.outerCubeScaleSpeed),
+      Math.sin(angle * this.outerCubeScaleSpeed),
+      Math.sin(angle * this.outerCubeScaleSpeed))
+
+    this.innerCube.scale(
+      Math.sin(angle * this.innerCubeScaleSpeed),
+      Math.sin(angle * this.innerCubeScaleSpeed),
+      Math.sin(angle * this.innerCubeScaleSpeed))
   }
 
 }
@@ -267,7 +337,7 @@ function setupCameras() {
 ////////////////////
 
 function setupLights() {
-  lightManager.ambientLight = new THREE.AmbientLight(CONFIG.LIGHT.AMBIENT_LIGHT_SHADE, 0.1);
+  lightManager.ambientLight = new THREE.AmbientLight(CONFIG.LIGHT.AMBIENT_LIGHT_SHADE, 0.2);
   lightManager.directionalLight = new THREE.DirectionalLight(CONFIG.LIGHT.DIRECTIONAL_LIGHT_SHADE, 0.5);
   
   lightManager.directionalLight.position.copy(CONFIG.LIGHT.DIRECTIONAL_LIGHT_POS);
