@@ -227,7 +227,7 @@ class Bunny extends DisplayObject {
   }
 
   // Define Bunny methods
-  
+
 }
 class Artemis extends DisplayObject {
   // Maybe does not have to be defined, since we are importing the model
@@ -253,10 +253,18 @@ function createScene() {
   scene.background = CONFIG.BACKGROUND;
   
   tesseract = new Tesseract();
-  tesseract.position.set(0, 3, 0);
+  tesseract.inScene();
   scene.add(tesseract);
 
-  const targets = [];
+  bunny = new Bunny();
+  bunny.outOfScene();
+  scene.add(bunny);
+
+  artemis = new Artemis();
+  artemis.outOfScene();
+  scene.add(artemis);
+
+  const targets = []; // TODO: what is this?
   scene.traverse((node) => {
     if (node.isObject3D && !node.isAxesHelper && !node.isCameraHelper) {
       targets.push(node);
