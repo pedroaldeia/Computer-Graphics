@@ -158,95 +158,194 @@ class Tesseract extends DisplayModel {
 
     // Define Tesseract attributes
     this.modelID = CONFIG.TESSERACT.MODEL_ID;
-
     this.rotationSpeed = CONFIG.TESSERACT.ROTATION_SPEED;
 
-    this.outerCubeScale = CONFIG.TESSERACT.OUTER_CUBE_SCALE;
-    this.innerCubeScale = CONFIG.TESSERACT.INNER_CUBE_SCALE;
+    this.outerCubeSize = CONFIG.TESSERACT.OUTER_CUBE_SCALE;
+    this.innerCubeSize = CONFIG.TESSERACT.INNER_CUBE_SCALE;
 
-    this.outerCubeScaleSpeed = CONFIG.TESSERACT.OUTER_CUBE_SCALE_SPEED;
-    this.innerCubeScaleSpeed = CONFIG.TESSERACT.INNER_CUBE_SCALE_SPEED;
-
-    this.outerCubeColour = CONFIG.TESSERACT.OUTER_CUBE_COLOUR;
-    this.innerCubeColour = CONFIG.TESSERACT.INNER_CUBE_COLOUR;
-
+    this.colour = CONFIG.TESSERACT.OUTER_CUBE_COLOUR;
     this.elapsedTime = 0;
+
+    // Create normal map
+    this.normalMap = this.generateConcentricCirclesNormalMap();
 
     this.constructTesseract();
   }
 
-  // Define Tesseract methods
+  // Load normal map from image file
+  generateConcentricCirclesNormalMap() {
+    const textureLoader = new THREE.TextureLoader();
+    const texture = textureLoader.load('NormalMap.png');
+    return texture;
+  }
+
+  // Create cube geometry manually with vertices and faces
+  createCubeGeometry(size) {
+    const geometry = new THREE.BufferGeometry();
+    const half = size / 2;
+
+    // Define vertices of a cube
+    const vertices = new Float32Array([
+      // Front face
+      -half, -half,  half,
+       half, -half,  half,
+       half,  half,  half,
+      -half,  half,  half,
+      // Back face
+      -half, -half, -half,
+       half, -half, -half,
+       half,  half, -half,
+      -half,  half, -half,
+    ]);
+
+    // Define faces (triangles) - each face uses 2 triangles
+    const indices = new Uint16Array([
+      // Front face
+      0, 1, 2,
+      2, 3, 0,
+      // Back face
+      6, 5, 4,
+      4, 7, 6,
+      // Top face
+      3, 2, 6,
+      6, 7, 3,
+      // Bottom face
+      4, 5, 1,
+      1, 0, 4,
+      // Right face
+      1, 5, 6,
+      6, 2, 1,
+      // Left face
+      4, 0, 3,
+      3, 7, 4,
+    ]);
+
+    // Calculate normals
+    const normals = new Float32Array(vertices.length);
+    for (let i = 0; i < normals.length; i++) {
+      normals[i] = 0;
+    }
+
+    // Simple normal calculation
+    for (let i = 0; i < indices.length; i += 3) {
+      const i0 = indices[i] * 3;
+      const i1 = indices[i + 1] * 3;
+      const i2 = indices[i + 2] * 3;
+
+      const v0 = new THREE.Vector3(vertices[i0], vertices[i0 + 1], vertices[i0 + 2]);
+      const v1 = new THREE.Vector3(vertices[i1], vertices[i1 + 1], vertices[i1 + 2]);
+      const v2 = new THREE.Vector3(vertices[i2], vertices[i2 + 1], vertices[i2 + 2]);
+
+      const edge1 = v1.sub(v0);
+      const edge2 = v2.sub(v0);
+      const normal = edge1.cross(edge2).normalize();
+
+      normals[i0] += normal.x;
+      normals[i0 + 1] += normal.y;
+      normals[i0 + 2] += normal.z;
+
+      normals[i1] += normal.x;
+      normals[i1 + 1] += normal.y;
+      normals[i1 + 2] += normal.z;
+
+      normals[i2] += normal.x;
+      normals[i2 + 1] += normal.y;
+      normals[i2 + 2] += normal.z;
+    }
+
+    // Normalize normals
+    for (let i = 0; i < normals.length; i += 3) {
+      const normal = new THREE.Vector3(normals[i], normals[i + 1], normals[i + 2]).normalize();
+      normals[i] = normal.x;
+      normals[i + 1] = normal.y;
+      normals[i + 2] = normal.z;
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+    geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+
+    // Calculate UVs for texture mapping
+    const uvs = new Float32Array([
+      // Front
+      0, 0, 1, 0, 1, 1, 0, 1,
+      // Back
+      0, 0, 1, 0, 1, 1, 0, 1,
+    ]);
+    geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+
+    return geometry;
+  }
 
   constructTesseract() {
-    this.outerCube = this.createOuterCube();
-    this.innerCube = this.createInnerCube();
-  }
+    // Create outer and inner cube geometries
+    const outerGeometry = this.createCubeGeometry(this.outerCubeSize);
+    const innerGeometry = this.createCubeGeometry(this.innerCubeSize);
 
-  createOuterCube() {
-    const geometry = new THREE.BoxGeometry(
-      this.outerCubeScale, 
-      this.outerCubeScale, 
-      this.outerCubeScale);
-
+    // Create material with normal map
     const material = new THREE.MeshPhongMaterial({
-      color: this.outerCubeColour,
+      color: this.colour,
+      normalMap: this.normalMap,
       transparent: true,
-      opacity: 0.4,
+      opacity: 0.6,
       side: THREE.DoubleSide,
       wireframe: true,
     });
-    const outerCube = new THREE.Mesh(geometry, material);
 
-    outerCube.castShadow = true;
-    outerCube.receiveShadow = true;
+    // Create outer and inner cube meshes
+    this.outerCube = new THREE.Mesh(outerGeometry, material);
+    this.innerCube = new THREE.Mesh(innerGeometry, material);
 
-    this.add(outerCube);
-    return outerCube;
+    this.outerCube.castShadow = true;
+    this.outerCube.receiveShadow = true;
+    this.innerCube.castShadow = true;
+    this.innerCube.receiveShadow = true;
+
+    this.add(this.outerCube);
+    this.add(this.innerCube);
+
+    // Create lines connecting vertices
+    this.createConnectingLines();
   }
 
-  createInnerCube() {
-    const geometry = new THREE.BoxGeometry(
-      this.innerCubeScale, 
-      this.innerCubeScale, 
-      this.innerCubeScale);
+  createConnectingLines() {
+    const outerGeometry = this.outerCube.geometry;
+    const innerGeometry = this.innerCube.geometry;
 
-    const material = new THREE.MeshPhongMaterial({
-      color: this.innerCubeColour,
+    const outerVertices = outerGeometry.attributes.position.array;
+    const innerVertices = innerGeometry.attributes.position.array;
+
+    const lineGeometry = new THREE.BufferGeometry();
+    const linePositions = [];
+
+    // Connect each vertex of the inner cube to the corresponding vertex of the outer cube
+    for (let i = 0; i < outerVertices.length; i += 3) {
+      // Inner vertex
+      linePositions.push(innerVertices[i], innerVertices[i + 1], innerVertices[i + 2]);
+      // Outer vertex
+      linePositions.push(outerVertices[i], outerVertices[i + 1], outerVertices[i + 2]);
+    }
+
+    lineGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(linePositions), 3));
+
+    const lineMaterial = new THREE.LineBasicMaterial({
+      color: this.colour,
       transparent: true,
-      opacity: 0.25,
-      side: THREE.DoubleSide,
-      wireframe: true,
+      opacity: 0.8,
+      linewidth: 2,
     });
-    const innerCube = new THREE.Mesh(geometry, material);
 
-    innerCube.castShadow = true;
-    innerCube.receiveShadow = true;
-
-    this.add(innerCube);
-    return innerCube;
+    const lines = new THREE.LineSegments(lineGeometry, lineMaterial);
+    this.add(lines);
   }
 
   rotate(deltaTime) {
     // Calculate rotation angles
-    this.elapsedTime += deltaTime
-    const angle = this.rotationSpeed * ((deltaTime) || 0);
+    this.elapsedTime += deltaTime;
+    const angle = this.rotationSpeed * deltaTime;
 
-    // Rotation
+    // Rotation only
     this.rotation.y += angle;
-
-    // Scale
-    const outerScale = Math.abs(Math.sin(this.elapsedTime * this.outerCubeScaleSpeed));
-    const innerScale = Math.abs(Math.sin(this.elapsedTime * this.innerCubeScaleSpeed));
-
-    this.outerCube.scale.set(
-      outerScale,
-      outerScale,
-      outerScale)
-
-    this.innerCube.scale.set(
-      innerScale,
-      innerScale,
-      innerScale)
   }
 
 }
