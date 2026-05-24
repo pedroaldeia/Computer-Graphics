@@ -446,7 +446,7 @@ function onResize() {
 function initializeHUD() {
   document.querySelectorAll("[data-model-id]").forEach((button) => {
     button.addEventListener("click", () => {
-      setActiveModel(button.dataset.modelID);
+      setActiveModel(button.dataset.modelId);
     });
   });
 }
@@ -467,7 +467,7 @@ function setActiveModel(modelId) {
   try { activeModel.inScene(); } catch (e) { console.warn('[setActiveModel] inScene failed', e); }
 
   document.querySelectorAll("[data-model-id]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.modelID === modelId);
+    button.classList.toggle("active", button.dataset.modelId === modelId);
   });
 }
 
