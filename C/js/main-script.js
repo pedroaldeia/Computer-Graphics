@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { AnaglyphEffect } from 'three/addons/effects/AnaglyphEffect.js';
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 
 const CONFIG = {
@@ -79,11 +80,12 @@ const lightManager = {
 
 let camera;
 
-let renderer, scene;
+let renderer, scene, anaglyphEffect;
 
 let tesseract, bunny, artemis;
 let models;
 let activeModel;
+let anaglyphEnabled = false;
 // TEMP!!!! <-REMOVE BEFORE SUBMISSION-> /////////////////////////////////
 let temporaryViewLight;
 
@@ -564,6 +566,11 @@ function update() {
 /* DISPLAY */
 /////////////
 function render() {
+  if (anaglyphEnabled && anaglyphEffect) {
+    anaglyphEffect.render(scene, camera);
+    return;
+  }
+
   renderer.render(scene, camera);
 }
 
@@ -580,6 +587,10 @@ function init() {
   document.body.appendChild(renderer.domElement);
   renderer.setPixelRatio(window.devicePixelRatio || 1);
   renderer.shadowMap.enabled = true;
+
+  anaglyphEffect = new AnaglyphEffect(renderer);
+  anaglyphEffect.setSize(CONFIG.WIDTH, CONFIG.HEIGHT);
+
   console.log('[init] renderer appended, size:', CONFIG.WIDTH, CONFIG.HEIGHT);
 
   createScene();
@@ -609,6 +620,7 @@ function animate() {
 ////////////////////////////
 function onResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if (anaglyphEffect) anaglyphEffect.setSize(window.innerWidth, window.innerHeight);
 
   if (window.innerHeight > 0 && window.innerWidth > 0) {
     updateCameraProjections();
@@ -622,6 +634,21 @@ function initializeHUD() {
       setActiveModel(button.dataset.modelId);
     });
   });
+
+  const anaglyphButton = document.getElementById("toggle-anaglyph");
+  if (anaglyphButton) {
+    anaglyphButton.addEventListener("click", () => {
+      setAnaglyphEnabled(!anaglyphEnabled);
+    });
+
+    setAnaglyphEnabled(anaglyphEnabled);
+  }
+}
+
+function setAnaglyphEnabled(enabled) {
+  anaglyphEnabled = enabled;
+  const anaglyphButton = document.getElementById("toggle-anaglyph");
+  anaglyphButton.classList.toggle("active", anaglyphEnabled);
 }
 
 function setActiveModel(modelId) {
