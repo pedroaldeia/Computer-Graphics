@@ -78,6 +78,11 @@ const lightManager = {
   ambientLight: null,
 }
 
+const MATERIAL_MODE = {
+  GOURAUD: "gouraud",
+  PHONG: "phong",
+};
+
 let camera;
 
 let renderer, scene, anaglyphEffect;
@@ -85,9 +90,8 @@ let renderer, scene, anaglyphEffect;
 let tesseract, bunny, artemis;
 let models;
 let activeModel;
+let materialMode = MATERIAL_MODE.PHONG;
 let anaglyphEnabled = false;
-// TEMP!!!! <-REMOVE BEFORE SUBMISSION-> /////////////////////////////////
-let temporaryViewLight;
 
 // Clock for frame delta time
 const clock = new THREE.Clock();
@@ -101,6 +105,29 @@ function updateCameraProjections() {
 
   camera.aspect = aspect;
   camera.updateProjectionMatrix();
+}
+
+function createShadingMaterials(options) {
+  return {
+    [MATERIAL_MODE.GOURAUD]: new THREE.MeshLambertMaterial(options),
+    [MATERIAL_MODE.PHONG]: new THREE.MeshPhongMaterial({
+      ...options,
+      specular: 0xaaaaaa,
+      shininess: 80,
+    }),
+  };
+}
+
+function assignShadingMaterials(mesh, materials) {
+  mesh.userData.shadingMaterials = materials;
+  mesh.material = materials[materialMode];
+}
+
+function applyMaterialMode(root, mode) {
+  root.traverse((node) => {
+    if (!node.isMesh || !node.userData.shadingMaterials) return;
+    node.material = node.userData.shadingMaterials[mode];
+  });
 }
 
 ///////////////////////
@@ -283,8 +310,8 @@ class Tesseract extends DisplayModel {
     const outerGeometry = this.createCubeGeometry(this.outerCubeSize);
     const innerGeometry = this.createCubeGeometry(this.innerCubeSize);
 
-    // Create material with normal map
-    const material1 = new THREE.MeshPhongMaterial({
+    // Create materials with normal map
+    const outerMaterials = createShadingMaterials({
       color: this.outerCubeColour,
       normalMap: this.normalMap,
       transparent: true,
@@ -293,7 +320,7 @@ class Tesseract extends DisplayModel {
       depthWrite: false,
     });
 
-    const material2 = new THREE.MeshPhongMaterial({
+    const innerMaterials = createShadingMaterials({
       color: this.innerCubeColour,
       normalMap: this.normalMap,
       transparent: true,
@@ -303,8 +330,10 @@ class Tesseract extends DisplayModel {
     });
 
     // Create outer and inner cube meshes
-    this.outerCube = new THREE.Mesh(outerGeometry, material1);
-    this.innerCube = new THREE.Mesh(innerGeometry, material2);
+    this.outerCube = new THREE.Mesh(outerGeometry);
+    this.innerCube = new THREE.Mesh(innerGeometry);
+    assignShadingMaterials(this.outerCube, outerMaterials);
+    assignShadingMaterials(this.innerCube, innerMaterials);
 
     this.outerCube.castShadow = true;
     this.outerCube.receiveShadow = true;
@@ -440,14 +469,16 @@ class Bunny extends DisplayModel {
 
   loadModel() {
     const loader = new OBJLoader();
-    const whiteMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
 
     loader.load(
       "js/bunny.obj",
       (model) => {
         model.traverse((node) => {
           if (node.isMesh) {
-            node.material = whiteMaterial;
+            assignShadingMaterials(
+              node,
+              createShadingMaterials({ color: 0xffffff })
+            );
           }
         });
 
@@ -489,10 +520,6 @@ function createScene() {
   scene = new THREE.Scene();
   console.log("scene created");
   scene.background = CONFIG.BACKGROUND;
-
-  // TEMP!!!! <-REMOVE BEFORE SUBMISSION-> /////////////////////////////////
-  temporaryViewLight = new THREE.HemisphereLight(0xffffff, 0x404040, 2.5);
-  scene.add(temporaryViewLight);
 
   tesseract = new Tesseract();
   tesseract.inScene();
@@ -635,20 +662,51 @@ function initializeHUD() {
     });
   });
 
+  const materialButton = document.getElementById("toggle-material");
+  if (materialButton) {
+    materialButton.addEventListener("click", () => {
+      const nextMode = materialMode === MATERIAL_MODE.PHONG
+        ? MATERIAL_MODE.GOURAUD
+        : MATERIAL_MODE.PHONG;
+      setMaterialMode(nextMode);
+    });
+  }
+
   const anaglyphButton = document.getElementById("toggle-anaglyph");
   if (anaglyphButton) {
     anaglyphButton.addEventListener("click", () => {
       setAnaglyphEnabled(!anaglyphEnabled);
     });
-
-    setAnaglyphEnabled(anaglyphEnabled);
   }
+
+  setMaterialMode(materialMode);
+  setAnaglyphEnabled(anaglyphEnabled);
+}
+
+function updateToggleButton(id, enabled) {
+  const button = document.getElementById(id);
+  if (!button) return;
+
+  button.classList.toggle("active", enabled);
+  button.setAttribute("aria-pressed", String(enabled));
+}
+
+function setMaterialMode(mode) {
+  materialMode = mode;
+  applyMaterialMode(scene, materialMode);
+
+  const materialButton = document.getElementById("toggle-material");
+  if (!materialButton) return;
+
+  const phongEnabled = materialMode === MATERIAL_MODE.PHONG;
+  materialButton.textContent = phongEnabled ? "Phong" : "Gouraud";
+  materialButton.classList.toggle("active", phongEnabled);
+  materialButton.setAttribute("aria-pressed", String(phongEnabled));
 }
 
 function setAnaglyphEnabled(enabled) {
   anaglyphEnabled = enabled;
-  const anaglyphButton = document.getElementById("toggle-anaglyph");
-  anaglyphButton.classList.toggle("active", anaglyphEnabled);
+  updateToggleButton("toggle-anaglyph", anaglyphEnabled);
 }
 
 function setActiveModel(modelId) {
