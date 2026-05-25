@@ -528,7 +528,7 @@ class Artemis extends DisplayModel {
 
 /////////////////////
 /* CREATE SCENE(S) */
-/////////////////////
+////////////////////
 
 function createScene() {
   scene = new THREE.Scene();
