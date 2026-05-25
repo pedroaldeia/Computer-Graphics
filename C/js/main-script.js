@@ -51,11 +51,11 @@ const CONFIG = {
     AMBIENT_LIGHT_SHADE: new THREE.Color(0xffffff), 
 
     // Light positions (relative in case of point and spotlights)
-    POINT_LIGHT_1_POS: new THREE.Vector3(100, 100, 100),
-    POINT_LIGHT_2_POS: new THREE.Vector3(100, 100, 100),
-    SPOTLIGHT_1_POS: new THREE.Vector3(100, 100, 100),
-    SPOTLIGHT_2_POS: new THREE.Vector3(100, 100, 100),
-    DIRECTIONAL_LIGHT_POS: new THREE.Vector3(50, 50, 0),
+    POINT_LIGHT_1_POS: new THREE.Vector3(15, 15, 15),
+    POINT_LIGHT_2_POS: new THREE.Vector3(-15, 15, 15),
+    SPOTLIGHT_1_POS: new THREE.Vector3(15, 15, 15),
+    SPOTLIGHT_2_POS: new THREE.Vector3(-15, 15, 15),
+    DIRECTIONAL_LIGHT_POS: new THREE.Vector3(20, 20, 20),
 
     // Notice that lights do not have a direction defined since they 
     // will be centered on the model
@@ -141,10 +141,10 @@ class DisplayModel extends THREE.Group {
     super();
     
     this.lights = {
-      spotlight1: new THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE, 1),
-      spotlight2: new THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE, 1),
-      pointLight1: new THREE.PointLight(CONFIG.LIGHT.POINT_LIGHT_SHADE, 1),
-      pointLight2: new THREE.PointLight(CONFIG.LIGHT.POINT_LIGHT_SHADE, 1),
+      spotlight1: new THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE, 2, 60, Math.PI / 4, 0.25, 1),
+      spotlight2: new THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE, 2, 60, Math.PI / 4, 0.25, 1),
+      pointLight1: new THREE.PointLight(CONFIG.LIGHT.POINT_LIGHT_SHADE, 2, 60, 1),
+      pointLight2: new THREE.PointLight(CONFIG.LIGHT.POINT_LIGHT_SHADE, 2, 60, 1),
     };
 
     this.outOfScenePos = CONFIG.POSITION.OUT_OF_SCENE_POS;
@@ -186,13 +186,15 @@ class DisplayModel extends THREE.Group {
   }
 
   switchSpotLight() {
-    this.lights.spotlight1.enabled = !this.lights.spotlight1.enabled;
-    this.lights.spotlight2.enabled = !this.lights.spotlight2.enabled;
+    const newIntensity = this.lights.spotlight1.intensity > 0 ? 0 : 2;
+    this.lights.spotlight1.intensity = newIntensity;
+    this.lights.spotlight2.intensity = newIntensity;
   }
 
   switchPointLight() {
-    this.lights.pointLight1.enabled = !this.lights.pointLight1.enabled;
-    this.lights.pointLight2.enabled = !this.lights.pointLight2.enabled;
+    const newIntensity = this.lights.pointLight1.intensity > 0 ? 0 : 2;
+    this.lights.pointLight1.intensity = newIntensity;
+    this.lights.pointLight2.intensity = newIntensity;
   }
 }
 
@@ -578,8 +580,8 @@ function setupCameras() {
 ////////////////////
 
 function setupLights() {
-  lightManager.ambientLight = new THREE.AmbientLight(CONFIG.LIGHT.AMBIENT_LIGHT_SHADE, 0.2);
-  lightManager.directionalLight = new THREE.DirectionalLight(CONFIG.LIGHT.DIRECTIONAL_LIGHT_SHADE, 1);
+  lightManager.ambientLight = new THREE.AmbientLight(CONFIG.LIGHT.AMBIENT_LIGHT_SHADE, 0.1);
+  lightManager.directionalLight = new THREE.DirectionalLight(CONFIG.LIGHT.DIRECTIONAL_LIGHT_SHADE, 0.35);
   
   lightManager.directionalLight.position.copy(CONFIG.LIGHT.DIRECTIONAL_LIGHT_POS);
   lightManager.directionalLight.target.position.copy(CONFIG.POSITION.IN_SCENE_POS);
