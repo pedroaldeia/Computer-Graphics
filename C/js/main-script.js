@@ -523,34 +523,37 @@ class Artemis extends DisplayModel {
   }
 
   loadModel() {
-    const textureLoader = new THREE.TextureLoader();
-    const texture = textureLoader.load('js/artemis/Corpo principal.png');
-
-    const objLoader = new OBJLoader();
-    objLoader.setPath('js/artemis/');
-    objLoader.load('Artemis.obj', (model) => {
-      console.log('[Artemis.loadModel] Model loaded:', model);
-      model.traverse((node) => {
-        if (node.isMesh) {
-          node.castShadow = true;
-          node.receiveShadow = true;
-          assignShadingMaterials(
-            node,
-            createShadingMaterials({
-              map: texture,
-              side: THREE.DoubleSide,
-            })
-          );
-        }
+    const mtlLoader = new MTLLoader();
+    mtlLoader.setPath('js/artemis/');
+    mtlLoader.load('Artemis.mtl', (materials) => {
+      materials.preload();
+      const objLoader = new OBJLoader();
+      objLoader.setMaterials(materials);
+      objLoader.setPath('js/artemis/');
+      objLoader.load('Artemis.obj', (model) => {
+        model.traverse((node) => {
+          if (node.isMesh) {
+            node.castShadow = true;
+            node.receiveShadow = true;
+            // No need to manually assign textures if MTL is correct
+            assignShadingMaterials(
+              node,
+              createShadingMaterials({
+                map: node.material.map,
+                side: THREE.DoubleSide,
+              })
+            );
+          }
+        });
+        this.add(model);
+        console.log('[Artemis.loadModel] artemis model added to the scene graph');
+      },
+      (xhr) => {
+        console.log(`[Artemis.loadModel] OBJ loading progress: ${(xhr.loaded / xhr.total * 100)}% loaded`);
+      },
+      (error) => {
+        console.error('[Artemis.loadModel] Error loading OBJ model:', error);
       });
-      this.add(model);
-      console.log('[Artemis.loadModel] artemis model added to the scene graph');
-    },
-    (xhr) => {
-      console.log(`[Artemis.loadModel] OBJ loading progress: ${(xhr.loaded / xhr.total * 100)}% loaded`);
-    },
-    (error) => {
-      console.error('[Artemis.loadModel] Error loading OBJ model:', error);
     });
   }
 
