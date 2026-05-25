@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { AnaglyphEffect } from 'three/addons/effects/AnaglyphEffect.js';
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
+import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
 
 const CONFIG = {
   HEIGHT: window.innerHeight,
@@ -35,7 +36,7 @@ const CONFIG = {
   },
   ARTEMIS: {
     MODEL_ID: "artemis",
-    ROTATION_SPEED: 10,
+    ROTATION_SPEED: 2,
   },
 
   POSITION: {
@@ -51,11 +52,11 @@ const CONFIG = {
     AMBIENT_LIGHT_SHADE: new THREE.Color(0xffffff), 
 
     // Light positions (relative in case of point and spotlights)
-    POINT_LIGHT_1_POS: new THREE.Vector3(15, 15, 15),
-    POINT_LIGHT_2_POS: new THREE.Vector3(-15, 15, 15),
-    SPOTLIGHT_1_POS: new THREE.Vector3(15, 15, 15),
-    SPOTLIGHT_2_POS: new THREE.Vector3(-15, 15, 15),
-    DIRECTIONAL_LIGHT_POS: new THREE.Vector3(20, 20, 20),
+    POINT_LIGHT_1_POS: new THREE.Vector3(-150, 150, 150),
+    POINT_LIGHT_2_POS: new THREE.Vector3(-150, 150, 150),
+    SPOTLIGHT_1_POS: new THREE.Vector3(-150, 150, 150),
+    SPOTLIGHT_2_POS: new THREE.Vector3(-150, 150, 150),
+    DIRECTIONAL_LIGHT_POS: new THREE.Vector3(-150, 150, 150),
 
     // Notice that lights do not have a direction defined since they 
     // will be centered on the model
@@ -65,7 +66,7 @@ const CONFIG = {
     FOV: 70,
     NEAR: 1,
     FAR: 1000,
-    POSITION: { x: 10, y: 5, z: 10 },
+    POSITION: { x: 100, y: 200, z: 100 },
   },
 
   BACKGROUND: new THREE.Color(0x000000),
@@ -518,6 +519,39 @@ class Artemis extends DisplayModel {
     // Define Artemis attributes
     this.modelID = CONFIG.ARTEMIS.MODEL_ID;
     this.rotationSpeed = CONFIG.ARTEMIS.ROTATION_SPEED;
+    this.loadModel();
+  }
+
+  loadModel() {
+    const textureLoader = new THREE.TextureLoader();
+    const texture = textureLoader.load('js/artemis/Corpo principal.png');
+
+    const objLoader = new OBJLoader();
+    objLoader.setPath('js/artemis/');
+    objLoader.load('Artemis.obj', (model) => {
+      console.log('[Artemis.loadModel] Model loaded:', model);
+      model.traverse((node) => {
+        if (node.isMesh) {
+          node.castShadow = true;
+          node.receiveShadow = true;
+          assignShadingMaterials(
+            node,
+            createShadingMaterials({
+              map: texture,
+              side: THREE.DoubleSide,
+            })
+          );
+        }
+      });
+      this.add(model);
+      console.log('[Artemis.loadModel] artemis model added to the scene graph');
+    },
+    (xhr) => {
+      console.log(`[Artemis.loadModel] OBJ loading progress: ${(xhr.loaded / xhr.total * 100)}% loaded`);
+    },
+    (error) => {
+      console.error('[Artemis.loadModel] Error loading OBJ model:', error);
+    });
   }
 
   // Define Artemis methods
@@ -580,8 +614,8 @@ function setupCameras() {
 ////////////////////
 
 function setupLights() {
-  lightManager.ambientLight = new THREE.AmbientLight(CONFIG.LIGHT.AMBIENT_LIGHT_SHADE, 0.1);
-  lightManager.directionalLight = new THREE.DirectionalLight(CONFIG.LIGHT.DIRECTIONAL_LIGHT_SHADE, 0.35);
+  lightManager.ambientLight = new THREE.AmbientLight(CONFIG.LIGHT.AMBIENT_LIGHT_SHADE, 0.5);
+  lightManager.directionalLight = new THREE.DirectionalLight(CONFIG.LIGHT.DIRECTIONAL_LIGHT_SHADE, 1.5);
   
   lightManager.directionalLight.position.copy(CONFIG.LIGHT.DIRECTIONAL_LIGHT_POS);
   lightManager.directionalLight.target.position.copy(CONFIG.POSITION.IN_SCENE_POS);
