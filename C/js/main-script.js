@@ -73,9 +73,12 @@ const CONFIG = {
 };
 
 const lightManager = {
-  // light manager only accounts for the lights that are not assigned to the models
   directionalLight: null,
   ambientLight: null,
+
+  spotLightsEnabled: true,
+  pointLightsEnabled: true,
+  directionalLightEnabled: true,
 }
 
 const MATERIAL_MODE = {
@@ -92,7 +95,6 @@ let models;
 let activeModel;
 let materialMode = MATERIAL_MODE.PHONG;
 let anaglyphEnabled = false;
-
 // Clock for frame delta time
 const clock = new THREE.Clock();
 
@@ -139,10 +141,10 @@ class DisplayModel extends THREE.Group {
     super();
     
     this.lights = {
-      spotlight1: new THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE),
-      spotlight2: new THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE),
-      pointLight1: new THREE.PointLight(CONFIG.LIGHT.POINT_LIGHT_SHADE),
-      pointLight2: new THREE.PointLight(CONFIG.LIGHT.POINT_LIGHT_SHADE),
+      spotlight1: new THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE, 1),
+      spotlight2: new THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE, 1),
+      pointLight1: new THREE.PointLight(CONFIG.LIGHT.POINT_LIGHT_SHADE, 1),
+      pointLight2: new THREE.PointLight(CONFIG.LIGHT.POINT_LIGHT_SHADE, 1),
     };
 
     this.outOfScenePos = CONFIG.POSITION.OUT_OF_SCENE_POS;
@@ -181,6 +183,16 @@ class DisplayModel extends THREE.Group {
     this.rotation.y += angle;
     // Debug: log rotation for this object
     console.debug(`[rotate] ${this.modelID || this.constructor.name} angle=`, angle);
+  }
+
+  switchSpotLight() {
+    this.lights.spotlight1.enabled = !this.lights.spotlight1.enabled;
+    this.lights.spotlight2.enabled = !this.lights.spotlight2.enabled;
+  }
+
+  switchPointLight() {
+    this.lights.pointLight1.enabled = !this.lights.pointLight1.enabled;
+    this.lights.pointLight2.enabled = !this.lights.pointLight2.enabled;
   }
 }
 
@@ -315,7 +327,7 @@ class Tesseract extends DisplayModel {
       color: this.outerCubeColour,
       normalMap: this.normalMap,
       transparent: true,
-      opacity: 0.2,
+      opacity: 0.4,
       side: THREE.DoubleSide,
       depthWrite: false,
     });
@@ -324,7 +336,7 @@ class Tesseract extends DisplayModel {
       color: this.innerCubeColour,
       normalMap: this.normalMap,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.7,
       side: THREE.DoubleSide,
       depthWrite: false,
     });
@@ -567,7 +579,7 @@ function setupCameras() {
 
 function setupLights() {
   lightManager.ambientLight = new THREE.AmbientLight(CONFIG.LIGHT.AMBIENT_LIGHT_SHADE, 0.2);
-  lightManager.directionalLight = new THREE.DirectionalLight(CONFIG.LIGHT.DIRECTIONAL_LIGHT_SHADE, 0.5);
+  lightManager.directionalLight = new THREE.DirectionalLight(CONFIG.LIGHT.DIRECTIONAL_LIGHT_SHADE, 1);
   
   lightManager.directionalLight.position.copy(CONFIG.LIGHT.DIRECTIONAL_LIGHT_POS);
   lightManager.directionalLight.target.position.copy(CONFIG.POSITION.IN_SCENE_POS);
@@ -577,6 +589,10 @@ function setupLights() {
     for (const light of Object.values(lightManager)) scene.add(light);
     scene.add(lightManager.directionalLight.target);
     console.log('[setupLights] lights added:', Object.keys(lightManager));
+  
+  updateToggleButton("toggle-directional-light", lightManager.directionalLightEnabled);
+  updateToggleButton("toggle-spotlights", lightManager.spotLightsEnabled);
+  updateToggleButton("toggle-point-lights", lightManager.pointLightsEnabled);
 }
 
 ////////////
@@ -679,6 +695,27 @@ function initializeHUD() {
     });
   }
 
+  const pointLightButton = document.getElementById("toggle-point-lights");
+  if (pointLightButton) {
+    pointLightButton.addEventListener("click", () => {
+      setPointLightEnabled();
+    });
+  }
+
+  const spotLightButton = document.getElementById("toggle-spotlights");
+  if (spotLightButton) {
+    spotLightButton.addEventListener("click", () => {
+      setSpotLightEnabled();
+    });
+  } 
+
+  const directionalLightButton = document.getElementById("toggle-directional-light");
+  if (directionalLightButton) {
+    directionalLightButton.addEventListener("click", () => {
+      setDirectionalLightEnabled();
+    });
+  }
+
   setMaterialMode(materialMode);
   setAnaglyphEnabled(anaglyphEnabled);
 }
@@ -707,6 +744,28 @@ function setMaterialMode(mode) {
 function setAnaglyphEnabled(enabled) {
   anaglyphEnabled = enabled;
   updateToggleButton("toggle-anaglyph", anaglyphEnabled);
+}
+
+function setDirectionalLightEnabled(enabled) {
+  lightManager.directionalLightEnabled = !lightManager.directionalLightEnabled;
+  lightManager.directionalLight.intensity = lightManager.directionalLightEnabled ? 0.5 : 0;
+  updateToggleButton("toggle-directional-light", lightManager.directionalLightEnabled);
+}
+
+function setPointLightEnabled(enabled) {
+  lightManager.pointLightsEnabled = !lightManager.pointLightsEnabled;
+  for (const modelKey in models) {
+    models[modelKey].switchPointLight();
+  }
+  updateToggleButton("toggle-point-lights", lightManager.pointLightsEnabled);
+}
+
+function setSpotLightEnabled(enabled) {
+  lightManager.spotLightsEnabled = !lightManager.spotLightsEnabled;
+  for (const modelKey in models) {
+    models[modelKey].switchSpotLight();
+  }
+  updateToggleButton("toggle-spotlights", lightManager.spotLightsEnabled);
 }
 
 function setActiveModel(modelId) {
