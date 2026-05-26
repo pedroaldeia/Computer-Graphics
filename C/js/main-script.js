@@ -84,6 +84,7 @@ const lightManager = {
 const MATERIAL_MODE = {
   GOURAUD: "gouraud",
   PHONG: "phong",
+  BASIC: "basic",
 };
 
 let camera;
@@ -94,6 +95,7 @@ let tesseract, bunny, artemis;
 let models;
 let activeModel;
 let materialMode = MATERIAL_MODE.PHONG;
+let lightingCalculationEnabled = true;
 let anaglyphEnabled = false;
 // Clock for frame delta time
 const clock = new THREE.Clock();
@@ -117,6 +119,7 @@ function createShadingMaterials(options) {
       specular: 0xaaaaaa,
       shininess: 80,
     }),
+    [MATERIAL_MODE.BASIC]: new THREE.MeshBasicMaterial(options),
   };
 }
 
@@ -128,7 +131,9 @@ function assignShadingMaterials(mesh, materials) {
 function applyMaterialMode(root, mode) {
   root.traverse((node) => {
     if (!node.isMesh || !node.userData.shadingMaterials) return;
-    node.material = node.userData.shadingMaterials[mode];
+    node.material = lightingCalculationEnabled
+      ? node.userData.shadingMaterials[mode]
+      : node.userData.shadingMaterials[MATERIAL_MODE.BASIC];
   });
 }
 
@@ -690,6 +695,13 @@ function initializeHUD() {
     });
   }
 
+  const lightingCalculationButton = document.getElementById("toggle-lighting-calculation");
+  if (lightingCalculationButton) {
+    lightingCalculationButton.addEventListener("click", () => {
+      setLightingCalculationEnabled(!lightingCalculationEnabled);
+    });
+  }
+
   const anaglyphButton = document.getElementById("toggle-anaglyph");
   if (anaglyphButton) {
     anaglyphButton.addEventListener("click", () => {
@@ -719,6 +731,7 @@ function initializeHUD() {
   }
 
   setMaterialMode(materialMode);
+  setLightingCalculationEnabled(lightingCalculationEnabled);
   setAnaglyphEnabled(anaglyphEnabled);
 }
 
@@ -741,6 +754,12 @@ function setMaterialMode(mode) {
   materialButton.textContent = phongEnabled ? "Phong" : "Gouraud";
   materialButton.classList.toggle("active", phongEnabled);
   materialButton.setAttribute("aria-pressed", String(phongEnabled));
+}
+
+function setLightingCalculationEnabled(enabled) {
+  lightingCalculationEnabled = enabled;
+  applyMaterialMode(scene, materialMode);
+  updateToggleButton("toggle-lighting-calculation", lightingCalculationEnabled);
 }
 
 function setAnaglyphEnabled(enabled) {
