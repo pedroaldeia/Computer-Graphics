@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { AnaglyphEffect } from 'three/addons/effects/AnaglyphEffect.js';
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
+import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
 
 const CONFIG = {
   HEIGHT: window.innerHeight,
@@ -35,7 +36,8 @@ const CONFIG = {
   },
   ARTEMIS: {
     MODEL_ID: "artemis",
-    ROTATION_SPEED: 10,
+    ROTATION_SPEED: 1,
+    SCALE: new THREE.Vector3(0.07, 0.07, 0.07),
   },
 
   POSITION: {
@@ -49,6 +51,12 @@ const CONFIG = {
     SPOTLIGHT_SHADE: new THREE.Color(0xffffff),
     DIRECTIONAL_LIGHT_SHADE: new THREE.Color(0xffffff),
     AMBIENT_LIGHT_SHADE: new THREE.Color(0xffffff), 
+
+    // Light intensities (increased for better visibility)
+    AMBIENT_LIGHT_INTENSITY: 0.3,
+    DIRECTIONAL_LIGHT_INTENSITY: 0.8,
+    SPOTLIGHT_INTENSITY: 3,
+    POINT_LIGHT_INTENSITY: 3,
 
     // Light positions (relative in case of point and spotlights)
     POINT_LIGHT_1_POS: new THREE.Vector3(15, 15, 15),
@@ -146,10 +154,10 @@ class DisplayModel extends THREE.Group {
     super();
     
     this.lights = {
-      spotlight1: new THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE, 2, 60, Math.PI / 4, 0.25, 1),
-      spotlight2: new THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE, 2, 60, Math.PI / 4, 0.25, 1),
-      pointLight1: new THREE.PointLight(CONFIG.LIGHT.POINT_LIGHT_SHADE, 2, 60, 1),
-      pointLight2: new THREE.PointLight(CONFIG.LIGHT.POINT_LIGHT_SHADE, 2, 60, 1),
+      spotlight1: new THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE, CONFIG.LIGHT.SPOTLIGHT_INTENSITY, 60, Math.PI / 4, 0.25, 1),
+      spotlight2: new THREE.SpotLight(CONFIG.LIGHT.SPOTLIGHT_SHADE, CONFIG.LIGHT.SPOTLIGHT_INTENSITY, 60, Math.PI / 4, 0.25, 1),
+      pointLight1: new THREE.PointLight(CONFIG.LIGHT.POINT_LIGHT_SHADE, CONFIG.LIGHT.POINT_LIGHT_INTENSITY, 60, 1),
+      pointLight2: new THREE.PointLight(CONFIG.LIGHT.POINT_LIGHT_SHADE, CONFIG.LIGHT.POINT_LIGHT_INTENSITY, 60, 1),
     };
 
     this.outOfScenePos = CONFIG.POSITION.OUT_OF_SCENE_POS;
@@ -191,13 +199,13 @@ class DisplayModel extends THREE.Group {
   }
 
   switchSpotLight() {
-    const newIntensity = this.lights.spotlight1.intensity > 0 ? 0 : 2;
+    const newIntensity = this.lights.spotlight1.intensity > 0 ? 0 : CONFIG.LIGHT.SPOTLIGHT_INTENSITY;
     this.lights.spotlight1.intensity = newIntensity;
     this.lights.spotlight2.intensity = newIntensity;
   }
 
   switchPointLight() {
-    const newIntensity = this.lights.pointLight1.intensity > 0 ? 0 : 2;
+    const newIntensity = this.lights.pointLight1.intensity > 0 ? 0 : CONFIG.LIGHT.POINT_LIGHT_INTENSITY;
     this.lights.pointLight1.intensity = newIntensity;
     this.lights.pointLight2.intensity = newIntensity;
   }
@@ -516,18 +524,55 @@ class Bunny extends DisplayModel {
 
 }
 class Artemis extends DisplayModel {
-  // Maybe does not have to be defined, since we are importing the model
+  // Artemis model: lazy-loaded from js/artemis with MTL textures
   constructor() {
     super();
 
     // Define Artemis attributes
     this.modelID = CONFIG.ARTEMIS.MODEL_ID;
     this.rotationSpeed = CONFIG.ARTEMIS.ROTATION_SPEED;
+
+    this.loading = false;
   }
 
-  // Define Artemis methods
+  loadModel() {
+  const mtlLoader = new MTLLoader();
+  mtlLoader.load("js/artemis/Artemis.mtl", (materials) => {
+    materials.preload();
+
+    const objLoader = new OBJLoader();
+    objLoader.setMaterials(materials);
+    objLoader.load("js/artemis/Artemis.obj", (object) => {
+      object.traverse((node) => {
+        if (node.isMesh) {
+          const originalMat = node.material || {};
+          const options = {
+            color: originalMat.color || 0xffffff,
+            map: originalMat.map || null,
+            normalMap: originalMat.normalMap || null,
+            transparent: originalMat.transparent || false,
+            opacity: originalMat.opacity ?? 1,
+            side: originalMat.side || THREE.DoubleSide,
+          };
+
+          assignShadingMaterials(node, createShadingMaterials(options));
+          node.castShadow = true;
+          node.receiveShadow = true;
+        }
+      });
+
+      object.position.set(0, -5, 0);
+      object.scale.copy(CONFIG.ARTEMIS?.SCALE || new THREE.Vector3(0.05, 0.05, 0.05));
+
+      this.model = object;
+      this.add(object);
+      console.log('[Artemis.loadModel] artemis model loaded');
+    });
+  });
+}
 
 }
+
 
 // Define other helper methods
 
@@ -585,8 +630,8 @@ function setupCameras() {
 ////////////////////
 
 function setupLights() {
-  lightManager.ambientLight = new THREE.AmbientLight(CONFIG.LIGHT.AMBIENT_LIGHT_SHADE, 0.1);
-  lightManager.directionalLight = new THREE.DirectionalLight(CONFIG.LIGHT.DIRECTIONAL_LIGHT_SHADE, 0.35);
+  lightManager.ambientLight = new THREE.AmbientLight(CONFIG.LIGHT.AMBIENT_LIGHT_SHADE, CONFIG.LIGHT.AMBIENT_LIGHT_INTENSITY);
+  lightManager.directionalLight = new THREE.DirectionalLight(CONFIG.LIGHT.DIRECTIONAL_LIGHT_SHADE, CONFIG.LIGHT.DIRECTIONAL_LIGHT_INTENSITY);
   
   lightManager.directionalLight.position.copy(CONFIG.LIGHT.DIRECTIONAL_LIGHT_POS);
   lightManager.directionalLight.target.position.copy(CONFIG.POSITION.IN_SCENE_POS);
@@ -769,7 +814,7 @@ function setAnaglyphEnabled(enabled) {
 
 function setDirectionalLightEnabled(enabled) {
   lightManager.directionalLightEnabled = !lightManager.directionalLightEnabled;
-  lightManager.directionalLight.intensity = lightManager.directionalLightEnabled ? 0.5 : 0;
+  lightManager.directionalLight.intensity = lightManager.directionalLightEnabled ? CONFIG.LIGHT.DIRECTIONAL_LIGHT_INTENSITY : 0;
   updateToggleButton("toggle-directional-light", lightManager.directionalLightEnabled);
 }
 
@@ -799,6 +844,11 @@ function setActiveModel(modelId) {
   if (!model) {
     console.warn(`[setActiveModel] no model found for id '${modelId}'`);
     return;
+  }
+
+
+  if (typeof model.loadModel === 'function' && !model.model && !model.loading) {
+    model.loadModel();
   }
 
   activeModel = model;
