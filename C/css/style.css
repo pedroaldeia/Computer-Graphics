@@ -23,6 +23,13 @@ button {
   background: rgba(0, 0, 0, 0.72);
   color: #fff;
   font-family: Arial, Helvetica, sans-serif;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.hud-panel.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-100%);
 }
 
 .hud-group {

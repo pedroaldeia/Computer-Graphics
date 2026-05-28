@@ -106,6 +106,7 @@ let activeModel;
 let materialMode = MATERIAL_MODE.PHONG;
 let lightingCalculationEnabled = true;
 let anaglyphEnabled = false;
+let hudVisible = true;
 // Clock for frame delta time
 const clock = new THREE.Clock();
 
@@ -734,6 +735,8 @@ function onResize() {
 }
 
 function initializeHUD() {
+  const hud = document.getElementById("hud");
+
   document.querySelectorAll("[data-model-id]").forEach((button) => {
     button.addEventListener("click", () => {
       setActiveModel(button.dataset.modelId);
@@ -788,6 +791,23 @@ function initializeHUD() {
   setMaterialMode(materialMode);
   setLightingCalculationEnabled(lightingCalculationEnabled);
   setAnaglyphEnabled(anaglyphEnabled);
+  setHudVisible(hudVisible);
+
+  document.addEventListener("click", (event) => {
+    if (hudVisible && hud?.contains(event.target)) return;
+
+    setHudVisible(!hudVisible);
+  });
+}
+
+function setHudVisible(visible) {
+  hudVisible = visible;
+
+  const hud = document.getElementById("hud");
+  if (!hud) return;
+
+  hud.classList.toggle("hidden", !hudVisible);
+  hud.setAttribute("aria-hidden", String(!hudVisible));
 }
 
 function updateToggleButton(id, enabled) {
