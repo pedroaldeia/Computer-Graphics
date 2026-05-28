@@ -80,7 +80,7 @@ const CONFIG = {
   CAMERA: {
     FOV: 70,
     FOCUS: 10,
-    ANAGLYPH_FOCUS: 1,
+    ANAGLYPH_FOCUS: 0.9,
     NEAR: 1,
     FAR: 1000,
     POSITION: { x: 10, y: 5, z: 10 },
