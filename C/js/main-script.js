@@ -37,7 +37,6 @@ const CONFIG = {
   },
   ARTEMIS: {
     MODEL_ID: "artemis",
-    ROTATION_SPEED: 1,
     SCALE: new THREE.Vector3(0.07, 0.07, 0.07),
   },
 
@@ -58,6 +57,14 @@ const CONFIG = {
     DIRECTIONAL_LIGHT_INTENSITY: 0.8,
     SPOTLIGHT_INTENSITY: 3,
     POINT_LIGHT_INTENSITY: 3,
+
+    // Directional shadow tuning
+    DIRECTIONAL_SHADOW_MAP_SIZE: 2048,
+    DIRECTIONAL_SHADOW_CAMERA_SIZE: 40,
+    DIRECTIONAL_SHADOW_CAMERA_NEAR: 0.5,
+    DIRECTIONAL_SHADOW_CAMERA_FAR: 120,
+    DIRECTIONAL_SHADOW_BIAS: -0.0001,
+    DIRECTIONAL_SHADOW_NORMAL_BIAS: 0.02,
 
     // Light positions (relative in case of point and spotlights)
     POINT_LIGHT_1_POS: new THREE.Vector3(15, 15, 15),
@@ -541,7 +548,6 @@ class Artemis extends DisplayModel {
 
     // Define Artemis attributes
     this.modelID = CONFIG.ARTEMIS.MODEL_ID;
-    this.rotationSpeed = CONFIG.ARTEMIS.ROTATION_SPEED;
 
     this.loading = false;
   }
@@ -574,13 +580,16 @@ class Artemis extends DisplayModel {
 
       object.position.set(0, -5, 0);
       object.scale.copy(CONFIG.ARTEMIS?.SCALE || new THREE.Vector3(0.05, 0.05, 0.05));
-
+      
       this.model = object;
       this.add(object);
       console.log('[Artemis.loadModel] artemis model loaded');
     });
   });
 }
+  rotate() {
+    /* do nothing */
+  }
 
 }
 
@@ -646,12 +655,27 @@ function setupLights() {
   
   lightManager.directionalLight.position.copy(CONFIG.LIGHT.DIRECTIONAL_LIGHT_POS);
   lightManager.directionalLight.target.position.copy(CONFIG.POSITION.IN_SCENE_POS);
-    lightManager.directionalLight.castShadow = true;
-    lightManager.directionalLight.shadow.mapSize.set(1024, 1024);
+  lightManager.directionalLight.castShadow = true;
+  lightManager.directionalLight.shadow.mapSize.set(
+    CONFIG.LIGHT.DIRECTIONAL_SHADOW_MAP_SIZE,
+    CONFIG.LIGHT.DIRECTIONAL_SHADOW_MAP_SIZE
+  );
+  lightManager.directionalLight.shadow.bias = CONFIG.LIGHT.DIRECTIONAL_SHADOW_BIAS;
+  lightManager.directionalLight.shadow.normalBias = CONFIG.LIGHT.DIRECTIONAL_SHADOW_NORMAL_BIAS;
 
-    for (const light of Object.values(lightManager)) scene.add(light);
-    scene.add(lightManager.directionalLight.target);
-    console.log('[setupLights] lights added:', Object.keys(lightManager));
+  const dirShadowCamera = lightManager.directionalLight.shadow.camera;
+  dirShadowCamera.left = -CONFIG.LIGHT.DIRECTIONAL_SHADOW_CAMERA_SIZE;
+  dirShadowCamera.right = CONFIG.LIGHT.DIRECTIONAL_SHADOW_CAMERA_SIZE;
+  dirShadowCamera.top = CONFIG.LIGHT.DIRECTIONAL_SHADOW_CAMERA_SIZE;
+  dirShadowCamera.bottom = -CONFIG.LIGHT.DIRECTIONAL_SHADOW_CAMERA_SIZE;
+  dirShadowCamera.near = CONFIG.LIGHT.DIRECTIONAL_SHADOW_CAMERA_NEAR;
+  dirShadowCamera.far = CONFIG.LIGHT.DIRECTIONAL_SHADOW_CAMERA_FAR;
+  dirShadowCamera.updateProjectionMatrix();
+
+  scene.add(lightManager.ambientLight);
+  scene.add(lightManager.directionalLight);
+  scene.add(lightManager.directionalLight.target);
+  console.log('[setupLights] lights added:', Object.keys(lightManager));
   
   updateToggleButton("toggle-directional-light", lightManager.directionalLightEnabled);
   updateToggleButton("toggle-spotlights", lightManager.spotLightsEnabled);
