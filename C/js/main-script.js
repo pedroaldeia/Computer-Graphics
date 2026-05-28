@@ -51,7 +51,7 @@ const CONFIG = {
     POINT_LIGHT_SHADE: new THREE.Color(0xffffff),
     SPOTLIGHT_SHADE: new THREE.Color(0xffffff),
     DIRECTIONAL_LIGHT_SHADE: new THREE.Color(0xffffff),
-    AMBIENT_LIGHT_SHADE: new THREE.Color(0xffffff), 
+    AMBIENT_LIGHT_SHADE: new THREE.Color(0xffffff),
 
     // Light intensities (increased for better visibility)
     AMBIENT_LIGHT_INTENSITY: 0.3,
@@ -72,6 +72,8 @@ const CONFIG = {
 
   CAMERA: {
     FOV: 70,
+    FOCUS: 10,
+    ANAGLYPH_FOCUS: 1,
     NEAR: 1,
     FAR: 1000,
     POSITION: { x: 10, y: 5, z: 10 },
@@ -630,6 +632,7 @@ function setupCameras() {
     const aspect = window.innerWidth / window.innerHeight;
 
     camera = new THREE.PerspectiveCamera(CONFIG.CAMERA.FOV, aspect, CONFIG.CAMERA.NEAR, CONFIG.CAMERA.FAR);
+    camera.focus = CONFIG.CAMERA.FOCUS;
     camera.position.set(CONFIG.CAMERA.POSITION.x, CONFIG.CAMERA.POSITION.y, CONFIG.CAMERA.POSITION.z);
     camera.lookAt(scene.position);
 
@@ -839,6 +842,8 @@ function setLightingCalculationEnabled(enabled) {
 
 function setAnaglyphEnabled(enabled) {
   anaglyphEnabled = enabled;
+  camera.focus = anaglyphEnabled ? CONFIG.CAMERA.ANAGLYPH_FOCUS : CONFIG.CAMERA.FOCUS;
+  camera.updateProjectionMatrix();
   updateToggleButton("toggle-anaglyph", anaglyphEnabled);
 }
 
