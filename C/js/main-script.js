@@ -14,11 +14,12 @@ const CONFIG = {
 
     ROTATION_SPEED: 1,
 
-    OUTER_CUBE_SCALE: 10,
-    INNER_CUBE_SCALE: 5,
+    OUTER_CUBE_SIZE: 8,
+    INNER_CUBE_SIZE: 4,
 
-    OUTER_CUBE_SCALE_SPEED: 1,
-    INNER_CUBE_SCALE_SPEED: 1.5,
+    CUBE_SCALE_SPEED: 1,
+
+    CUBE_SCALE_MIN: 0.1,
 
     OUTER_CUBE_COLOUR: new THREE.Color(0x0000ff),
     INNER_CUBE_COLOUR: new THREE.Color(0xff0000),
@@ -219,11 +220,12 @@ class Tesseract extends DisplayModel {
     this.modelID = CONFIG.TESSERACT.MODEL_ID;
     this.rotationSpeed = CONFIG.TESSERACT.ROTATION_SPEED;
 
-    this.outerCubeSize = CONFIG.TESSERACT.OUTER_CUBE_SCALE;
-    this.innerCubeSize = CONFIG.TESSERACT.INNER_CUBE_SCALE;
+    this.outerCubeSize = CONFIG.TESSERACT.OUTER_CUBE_SIZE;
+    this.innerCubeSize = CONFIG.TESSERACT.INNER_CUBE_SIZE;
 
-    this.outerCubeScaleSpeed = CONFIG.TESSERACT.OUTER_CUBE_SCALE_SPEED;
-    this.innerCubeScaleSpeed = CONFIG.TESSERACT.INNER_CUBE_SCALE_SPEED;
+    this.cubeScaleMin = CONFIG.TESSERACT.CUBE_SCALE_MIN;
+
+    this.cubeScaleSpeed = CONFIG.TESSERACT.CUBE_SCALE_SPEED;
 
     this.outerCubeColour = CONFIG.TESSERACT.OUTER_CUBE_COLOUR;
     this.innerCubeColour = CONFIG.TESSERACT.INNER_CUBE_COLOUR;
@@ -412,12 +414,51 @@ class Tesseract extends DisplayModel {
 
   createConnectingLines() {
     this.lineGeometry = new THREE.BufferGeometry();
+
+    const outerHalf = this.outerCubeSize / 2;
+    const innerHalf = this.innerCubeSize / 2;
+
+    const outerCorners = [
+      [-outerHalf, -outerHalf, -outerHalf],
+      [ outerHalf, -outerHalf, -outerHalf],
+      [ outerHalf,  outerHalf, -outerHalf],
+      [-outerHalf,  outerHalf, -outerHalf],
+      [-outerHalf, -outerHalf,  outerHalf],
+      [ outerHalf, -outerHalf,  outerHalf],
+      [ outerHalf,  outerHalf,  outerHalf],
+      [-outerHalf,  outerHalf,  outerHalf],
+    ];
+
+    const innerCorners = [
+      [-innerHalf, -innerHalf, -innerHalf],
+      [ innerHalf, -innerHalf, -innerHalf],
+      [ innerHalf,  innerHalf, -innerHalf],
+      [-innerHalf,  innerHalf, -innerHalf],
+      [-innerHalf, -innerHalf,  innerHalf],
+      [ innerHalf, -innerHalf,  innerHalf],
+      [ innerHalf,  innerHalf,  innerHalf],
+      [-innerHalf,  innerHalf,  innerHalf],
+    ];
+
     this.linePositions = new Float32Array(8 * 2 * 3);
+    for (let i = 0; i < 8; i++) {
+      const base = i * 6;
+      const outer = outerCorners[i];
+      const inner = innerCorners[i];
+
+      this.linePositions[base + 0] = outer[0];
+      this.linePositions[base + 1] = outer[1];
+      this.linePositions[base + 2] = outer[2];
+      this.linePositions[base + 3] = inner[0];
+      this.linePositions[base + 4] = inner[1];
+      this.linePositions[base + 5] = inner[2];
+    }
 
     this.lineGeometry.setAttribute(
       'position',
       new THREE.BufferAttribute(this.linePositions, 3)
     );
+    this.lineGeometry.computeBoundingSphere();
 
     const lineMaterial = new THREE.LineBasicMaterial({
       color: this.connectionsColour,
@@ -429,31 +470,9 @@ class Tesseract extends DisplayModel {
     this.lines = new THREE.LineSegments(this.lineGeometry, lineMaterial);
     this.lines.renderOrder = 3;
     this.add(this.lines);
-    this.updateConnectingLines();
   }
 
-  updateConnectingLines() {
-    const outerGeometry = this.outerCube.geometry;
-    const innerGeometry = this.innerCube.geometry;
-
-    const outerVertices = outerGeometry.attributes.position.array;
-    const innerVertices = innerGeometry.attributes.position.array;
-
-    let lineIndex = 0;
-
-    for (let i = 0; i < outerVertices.length; i += 3) {
-      this.linePositions[lineIndex++] = innerVertices[i] * this.innerCube.scale.x;
-      this.linePositions[lineIndex++] = innerVertices[i + 1] * this.innerCube.scale.y;
-      this.linePositions[lineIndex++] = innerVertices[i + 2] * this.innerCube.scale.z;
-
-      this.linePositions[lineIndex++] = outerVertices[i] * this.outerCube.scale.x;
-      this.linePositions[lineIndex++] = outerVertices[i + 1] * this.outerCube.scale.y;
-      this.linePositions[lineIndex++] = outerVertices[i + 2] * this.outerCube.scale.z;
-    }
-
-    this.lineGeometry.attributes.position.needsUpdate = true;
-    this.lineGeometry.computeBoundingSphere();
-  }
+  
 
   rotate(deltaTime) {
     // Calculate rotation angles
@@ -461,23 +480,14 @@ class Tesseract extends DisplayModel {
     const angle = this.rotationSpeed * deltaTime;
 
     // Rotation
+    this.rotation.x += angle;
     this.rotation.y += angle;
+    this.rotation.z += angle;
 
     // Scale
-    const outerScale = Math.abs(Math.sin(this.elapsedTime * this.outerCubeScaleSpeed));
-    const innerScale = Math.abs(Math.sin(this.elapsedTime * this.innerCubeScaleSpeed));
+    const scale = Math.abs(Math.sin(this.elapsedTime * this.cubeScaleSpeed)) + this.cubeScaleMin;
 
-    this.outerCube.scale.set(
-      outerScale,
-      outerScale,
-      outerScale);
-
-    this.innerCube.scale.set(
-      innerScale,
-      innerScale,
-      innerScale);
-
-    this.updateConnectingLines();
+    this.scale.set(scale, scale, scale);
   }
 
 }
