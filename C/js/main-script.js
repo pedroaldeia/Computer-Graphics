@@ -518,8 +518,10 @@ class Bunny extends DisplayModel {
   }
 
   loadModel() {
+    if (this.loading) return;
+    this.loading = true;
     const loader = new OBJLoader();
-    
+
     loader.load(
       "js/bunny.obj",
       (model) => {
@@ -556,39 +558,41 @@ class Artemis extends DisplayModel {
   }
 
   loadModel() {
-  const mtlLoader = new MTLLoader();
-  mtlLoader.load("js/artemis/Artemis.mtl", (materials) => {
-    materials.preload();
+    if (this.loading) return;
+    this.loading = true;
+    const mtlLoader = new MTLLoader();
+    mtlLoader.load("js/artemis/Artemis.mtl", (materials) => {
+      materials.preload();
 
-    const objLoader = new OBJLoader();
-    objLoader.setMaterials(materials);
-    objLoader.load("js/artemis/Artemis.obj", (object) => {
-      object.traverse((node) => {
-        if (node.isMesh) {
-          const originalMat = node.material || {};
-          const options = {
-            color: originalMat.color || 0xffffff,
-            map: originalMat.map || null,
-            normalMap: originalMat.normalMap || null,
-            transparent: originalMat.transparent || false,
-            opacity: originalMat.opacity ?? 1,
-            side: originalMat.side || THREE.DoubleSide,
-          };
+      const objLoader = new OBJLoader();
+      objLoader.setMaterials(materials);
+      objLoader.load("js/artemis/Artemis.obj", (object) => {
+        object.traverse((node) => {
+          if (node.isMesh) {
+            const originalMat = node.material || {};
+            const options = {
+              color: originalMat.color || 0xffffff,
+              map: originalMat.map || null,
+              normalMap: originalMat.normalMap || null,
+              transparent: originalMat.transparent || false,
+              opacity: originalMat.opacity ?? 1,
+              side: originalMat.side || THREE.DoubleSide,
+            };
 
-          assignShadingMaterials(node, createShadingMaterials(options));
-          node.castShadow = true;
-          node.receiveShadow = true;
-        }
+            assignShadingMaterials(node, createShadingMaterials(options));
+            node.castShadow = true;
+            node.receiveShadow = true;
+          }
+        });
+
+        object.position.set(0, -5, 0);
+        object.scale.copy(CONFIG.ARTEMIS.SCALE);
+        
+        this.model = object;
+        this.add(object);
       });
-
-      object.position.set(0, -5, 0);
-      object.scale.copy(CONFIG.ARTEMIS.SCALE);
-      
-      this.model = object;
-      this.add(object);
     });
-  });
-}
+  }
   rotate() {
     /* do nothing */
   }
