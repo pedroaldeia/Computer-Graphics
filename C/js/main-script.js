@@ -14,8 +14,8 @@ const CONFIG = {
 
     ROTATION_SPEED: 1,
 
-    OUTER_CUBE_SIZE: 8,
-    INNER_CUBE_SIZE: 4,
+    OUTER_CUBE_SIZE: 6,
+    INNER_CUBE_SIZE: 3,
 
     CUBE_SCALE_SPEED: 1,
 
@@ -26,6 +26,7 @@ const CONFIG = {
     CONNECTIONS_COLOUR: new THREE.Color(0x00ff00),
     OUTER_EDGES_COLOUR: new THREE.Color(0x00ffff),
     INNER_EDGES_COLOUR: new THREE.Color(0xffff00),
+    IN_SCENE_POS: new THREE.Vector3(0, -2, 0),
   },
 
   BUNNY: {
@@ -33,11 +34,13 @@ const CONFIG = {
 
     ROTATION_SPEED: 1,
 
-    SCALE: new THREE.Vector3(5, 5, 5),
+    SCALE: new THREE.Vector3(4, 4, 4), 
+    IN_SCENE_POS: new THREE.Vector3(0, -4, 0),
   },
   ARTEMIS: {
     MODEL_ID: "artemis",
-    SCALE: new THREE.Vector3(0.07, 0.07, 0.07),
+    SCALE: new THREE.Vector3(0.04, 0.04, 0.04),
+    IN_SCENE_POS: new THREE.Vector3(0, -2, 0),
   },
 
   POSITION: {
@@ -80,7 +83,7 @@ const CONFIG = {
   CAMERA: {
     FOV: 70,
     FOCUS: 10,
-    ANAGLYPH_FOCUS: 1,
+    ANAGLYPH_FOCUS: 0.9,
     NEAR: 1,
     FAR: 1000,
     POSITION: { x: 10, y: 5, z: 10 },
@@ -224,6 +227,9 @@ class Tesseract extends DisplayModel {
     // Define Tesseract attributes
     this.modelID = CONFIG.TESSERACT.MODEL_ID;
     this.rotationSpeed = CONFIG.TESSERACT.ROTATION_SPEED;
+
+    // Use per-model in-scene position (lower on screen)
+    this.inScenePos = CONFIG.TESSERACT.IN_SCENE_POS || this.inScenePos;
 
     this.outerCubeSize = CONFIG.TESSERACT.OUTER_CUBE_SIZE;
     this.innerCubeSize = CONFIG.TESSERACT.INNER_CUBE_SIZE;
@@ -505,12 +511,15 @@ class Bunny extends DisplayModel {
     this.modelID = CONFIG.BUNNY.MODEL_ID;
     this.rotationSpeed = CONFIG.BUNNY.ROTATION_SPEED;
 
+    // Use per-model in-scene position (lower on screen)
+    this.inScenePos = CONFIG.BUNNY.IN_SCENE_POS || this.inScenePos;
+
     this.loadModel();
   }
 
   loadModel() {
     const loader = new OBJLoader();
-
+    
     loader.load(
       "js/bunny.obj",
       (model) => {
