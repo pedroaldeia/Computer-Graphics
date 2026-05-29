@@ -119,10 +119,6 @@ let hudVisible = true;
 // Clock for frame delta time
 const clock = new THREE.Clock();
 
-// Update projection matrices for all cameras.
-// Orthographic cameras are positioned using a "half size" which is scaled by the
-// current aspect ratio to produce left/right extents. Perspective cameras only
-// need the aspect updated.
 function updateCameraProjections() {
   const aspect = window.innerWidth / window.innerHeight;
 
@@ -205,8 +201,6 @@ class DisplayModel extends THREE.Group {
   rotate(deltaTime) {
     const angle = this.rotationSpeed * (deltaTime || 0);
     this.rotation.y += angle;
-    // Debug: log rotation for this object
-    console.debug(`[rotate] ${this.modelID || this.constructor.name} angle=`, angle);
   }
 
   switchSpotLight() {
@@ -223,6 +217,7 @@ class DisplayModel extends THREE.Group {
 }
 
 class Tesseract extends DisplayModel {
+
   constructor() {
     super();
 
@@ -474,7 +469,6 @@ class Tesseract extends DisplayModel {
       color: this.connectionsColour,
       transparent: true,
       opacity: 0.8,
-      linewidth: 2,
     });
 
     this.lines = new THREE.LineSegments(this.lineGeometry, lineMaterial);
@@ -503,7 +497,7 @@ class Tesseract extends DisplayModel {
 }
 
 class Bunny extends DisplayModel {
-  // Maybe does not have to be defined, since we are importing the model
+
   constructor() {
     super();
 
@@ -533,7 +527,6 @@ class Bunny extends DisplayModel {
 
         this.model = model;
         this.add(model);
-        console.log('[Bunny.loadModel] bunny model loaded');
       },
       undefined,
       (error) => {
@@ -545,13 +538,12 @@ class Bunny extends DisplayModel {
 }
 class Artemis extends DisplayModel {
   // Artemis model: lazy-loaded from js/artemis with MTL textures
+
   constructor() {
     super();
 
     // Define Artemis attributes
     this.modelID = CONFIG.ARTEMIS.MODEL_ID;
-
-    this.loading = false;
   }
 
   loadModel() {
@@ -581,11 +573,10 @@ class Artemis extends DisplayModel {
       });
 
       object.position.set(0, -5, 0);
-      object.scale.copy(CONFIG.ARTEMIS?.SCALE || new THREE.Vector3(0.05, 0.05, 0.05));
+      object.scale.copy(CONFIG.ARTEMIS.SCALE);
       
       this.model = object;
       this.add(object);
-      console.log('[Artemis.loadModel] artemis model loaded');
     });
   });
 }
@@ -595,39 +586,31 @@ class Artemis extends DisplayModel {
 
 }
 
-
-// Define other helper methods
-
 /////////////////////
 /* CREATE SCENE(S) */
 /////////////////////
 
 function createScene() {
   scene = new THREE.Scene();
-  console.log("scene created");
   scene.background = CONFIG.BACKGROUND;
 
   tesseract = new Tesseract();
   tesseract.inScene();
   scene.add(tesseract);
-  console.log("tesseract created");
 
   bunny = new Bunny();
   bunny.outOfScene();
   scene.add(bunny);
-  console.log("bunny created");
 
   artemis = new Artemis();
   artemis.outOfScene();
   scene.add(artemis);
-  console.log("artemis created");
 
   models = {
     [tesseract.modelID]: tesseract,
     [bunny.modelID]: bunny,
     [artemis.modelID]: artemis
   };
-  console.log("models assigned", models);
 
   // Set default active model
   activeModel = tesseract;
@@ -757,7 +740,7 @@ function onResize() {
 
   if (window.innerHeight > 0 && window.innerWidth > 0) {
     updateCameraProjections();
-    console.log('[setupCameras] camera position:', camera.position.toArray());
+    console.log('[onResize] camera position:', camera.position.toArray());
   }
 }
 
@@ -871,13 +854,13 @@ function setAnaglyphEnabled(enabled) {
   updateToggleButton("toggle-anaglyph", anaglyphEnabled);
 }
 
-function setDirectionalLightEnabled(enabled) {
+function setDirectionalLightEnabled() {
   lightManager.directionalLightEnabled = !lightManager.directionalLightEnabled;
   lightManager.directionalLight.intensity = lightManager.directionalLightEnabled ? CONFIG.LIGHT.DIRECTIONAL_LIGHT_INTENSITY : 0;
   updateToggleButton("toggle-directional-light", lightManager.directionalLightEnabled);
 }
 
-function setPointLightEnabled(enabled) {
+function setPointLightEnabled() {
   lightManager.pointLightsEnabled = !lightManager.pointLightsEnabled;
   for (const modelKey in models) {
     models[modelKey].switchPointLight();
@@ -885,7 +868,7 @@ function setPointLightEnabled(enabled) {
   updateToggleButton("toggle-point-lights", lightManager.pointLightsEnabled);
 }
 
-function setSpotLightEnabled(enabled) {
+function setSpotLightEnabled() {
   lightManager.spotLightsEnabled = !lightManager.spotLightsEnabled;
   for (const modelKey in models) {
     models[modelKey].switchSpotLight();
@@ -896,7 +879,7 @@ function setSpotLightEnabled(enabled) {
 function setActiveModel(modelId) {
   console.log('[setActiveModel] requested:', modelId);
   if (activeModel){
-    try { activeModel.outOfScene(); } catch (e) { console.warn('[setActiveModel] activeModel outOfScene failed', e); }
+    activeModel.outOfScene();
   }
 
   const model = models[modelId];
@@ -906,12 +889,12 @@ function setActiveModel(modelId) {
   }
 
 
-  if (typeof model.loadModel === 'function' && !model.model && !model.loading) {
+  if (typeof model.loadModel === 'function' && !model.model) {
     model.loadModel();
   }
 
   activeModel = model;
-  try { activeModel.inScene(); } catch (e) { console.warn('[setActiveModel] inScene failed', e); }
+  activeModel.inScene();
 
   document.querySelectorAll("[data-model-id]").forEach((button) => {
     button.classList.toggle("active", button.dataset.modelId === modelId);
